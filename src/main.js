@@ -11,14 +11,12 @@ import { renderLogin }                   from './pages/login.js';
 import { renderStudentHome }      from './pages/student/home.js';
 import { renderStudentComplaints} from './pages/student/complaints.js';
 import { renderRoomBooking }      from './pages/student/booking.js';
-import { renderForum }            from './pages/forum.js';
 import { renderStudentResources } from './pages/student/resources.js';
 
 // Admin pages
 import { renderAdminHome }        from './pages/admin/home.js';
 import { renderAdminComplaints }  from './pages/admin/complaints.js';
 import { renderAdminRooms }       from './pages/admin/rooms.js';
-import { renderAdminForum }       from './pages/admin/forum.js';
 import { renderResources }        from './pages/admin/resources.js';
 
 // ── Page Maps ─────────────────────────────────────────────────
@@ -26,7 +24,6 @@ const STUDENT_PAGES = {
   home:       renderStudentHome,
   complaints: renderStudentComplaints,
   booking:    renderRoomBooking,
-  forum:      renderForum,
   resources:  renderStudentResources,
 };
 
@@ -34,7 +31,6 @@ const ADMIN_PAGES = {
   home:       renderAdminHome,
   complaints: renderAdminComplaints,
   rooms:      renderAdminRooms,
-  forum:      renderAdminForum,
   resources:  renderResources,
 };
 
