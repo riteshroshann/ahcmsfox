@@ -21,6 +21,9 @@ You are a principal-level full-stack engineer rewriting `ahcmsfox` — a SQLite/
 - ACID properties enforced via Postgres transactions with `FOR UPDATE` row locks
 - Schema must be 3NF/BCNF — no transitive dependencies
 
+**CODE STYLE:**
+- **No comment spam.** Zero decorative comments, zero section dividers, zero "this function does X" comments. Only write a comment when the *why* is non-obvious — the way a senior engineer at a top-tier company would. One-liners max. If the code is self-explanatory, no comment.
+
 **UI RULES (CRITICAL — READ THIS FIRST):**
 - **KEEP THE EXISTING UI.** The current frontend design in `src/style.css`, `src/pages/`, and `src/components/` is the baseline. Do NOT redesign pages from scratch. Port the existing layouts, components, and visual language into the Next.js app.
 - **Light mode ONLY.** Remove ALL dark mode code, dark theme toggles, `prefers-color-scheme` media queries, and dark CSS variables. The entire app must be white/light background everywhere — no exceptions.
