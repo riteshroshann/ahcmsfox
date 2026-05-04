@@ -1,168 +1,305 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase-browser";
+import { useState, useTransition, useCallback } from "react";
+import { createBrowserClient } from "@/lib/supabase-browser";
+import { parseRoomIntent, type ParsedRoomPrefs } from "@/app/actions/parseRoomIntent";
+import Link from "next/link";
+
+interface RoomMatch {
+  room_id: string;
+  room_code: string;
+  floor: number;
+  label: string;
+  capacity: number;
+  current_occupancy: number;
+  noise_level: number;
+  features: string[] | null;
+  score: number;
+}
+
+function scoreRoom(room: Omit<RoomMatch, "score">, prefs: ParsedRoomPrefs): number {
+  let score = 50;
+  if (prefs.floor_pref !== null && room.floor === prefs.floor_pref) score += 20;
+  if (prefs.noise_pref !== null) score -= Math.abs((room.noise_level ?? 3) - prefs.noise_pref) * 8;
+  if (prefs.features.length > 0 && room.features) {
+    const matched = prefs.features.filter(f =>
+      room.features!.some(rf => rf.toLowerCase().includes(f.toLowerCase()))
+    );
+    score += matched.length * 10;
+  }
+  score += Math.max(0, (room.capacity - room.current_occupancy - 1) * 3);
+  return Math.min(100, Math.max(0, score));
+}
 
 export default function BookingPage() {
-  const supabase = createClient();
-  const [rooms, setRooms] = useState<Record<string, unknown>[]>([]);
+  const supabase = createBrowserClient();
   const [intent, setIntent] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [peerRoll, setPeerRoll] = useState("");
-  const [toast, setToast] = useState<{ type: string; msg: string } | null>(null);
+  const [peers, setPeers] = useState<string[]>([]);
+  const [matches, setMatches] = useState<RoomMatch[]>([]);
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [parsedPrefs, setParsedPrefs] = useState<ParsedRoomPrefs | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadRooms();
-  }, []);
+  const findMatches = useCallback(() => {
+    if (!intent.trim()) return;
+    startTransition(async () => {
+      setError(null);
+      const prefs = await parseRoomIntent(intent);
+      setParsedPrefs(prefs);
 
-  async function loadRooms() {
-    const { data } = await supabase
-      .from("ROOM")
-      .select("*")
-      .eq("status", "available")
-      .order("hostel_code")
-      .order("floor")
-      .order("room_code");
+      const { data: rooms } = await supabase
+        .from("room")
+        .select("room_id, room_code, floor, capacity, current_occupancy, noise_level, features, room_type(label)")
+        .neq("status", "maintenance")
+        .lt("current_occupancy", supabase.from("room").select("capacity") as unknown as number)
+        .limit(20);
 
-    // filter client-side for rooms with space
-    const available = (data || []).filter((r) => r.current_occupancy < r.capacity);
-    setRooms(available);
-    setLoading(false);
-  }
+      if (!rooms) return;
 
-  async function handleSubmit() {
-    if (!selectedRoom) return;
-    setSubmitting(true);
+      const scored: RoomMatch[] = (rooms as Record<string, unknown>[]).map(r => {
+        const rt = r.room_type as Record<string, string> | null;
+        const base = {
+          room_id: r.room_id as string,
+          room_code: r.room_code as string,
+          floor: r.floor as number,
+          label: rt?.label ?? "Room",
+          capacity: r.capacity as number,
+          current_occupancy: r.current_occupancy as number,
+          noise_level: r.noise_level as number ?? 3,
+          features: r.features as string[] | null,
+        };
+        return { ...base, score: scoreRoom(base, prefs) };
+      });
 
-    const { data: { user } } = await supabase.auth.getUser();
-
-    const { error } = await supabase.from("ROOM_BOOKING_REQUEST").insert({
-      student_id: user!.id,
-      preferred_rooms: [selectedRoom],
-      intent_text: intent || null,
-      parsed_prefs: intent ? { raw: intent, peer_roll: peerRoll || null } : null,
-      peer_ids: null,
-      status: "pending",
+      scored.sort((a, b) => b.score - a.score);
+      setMatches(scored.slice(0, 3));
     });
+  }, [intent, supabase]);
 
-    if (error) {
-      setToast({ type: "error", msg: error.message });
-    } else {
-      setToast({ type: "success", msg: "Booking request submitted" });
-      setSelectedRoom(null);
-      setIntent("");
+  const addPeer = () => {
+    if (peerRoll.trim() && !peers.includes(peerRoll.trim())) {
+      setPeers(prev => [...prev, peerRoll.trim()]);
       setPeerRoll("");
     }
-    setSubmitting(false);
-    setTimeout(() => setToast(null), 3000);
-  }
+  };
 
-  if (loading) return <div className="loading-spinner" />;
+  const submitRequest = async () => {
+    if (!selectedRoom) return;
+    setError(null);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setError("Not authenticated."); return; }
+
+    let peerIds: string[] = [];
+    if (peers.length > 0) {
+      const { data: peerProfiles } = await supabase
+        .from("student_profile")
+        .select("student_id")
+        .in("roll_no", peers);
+      peerIds = (peerProfiles ?? []).map((p: Record<string, string>) => p.student_id);
+    }
+
+    const { error: err } = await supabase.from("room_booking_request").insert({
+      student_id: user.id,
+      preferred_rooms: [selectedRoom],
+      intent_text: intent,
+      parsed_prefs: parsedPrefs,
+      peer_ids: peerIds,
+    });
+
+    if (err) { setError(err.message); return; }
+    setSubmitted(true);
+  };
+
+  if (submitted) return (
+    <div style={{ padding: "48px 32px", fontFamily: "Inter, system-ui, sans-serif" }}>
+      <p style={{ fontSize: "13px", color: "#777" }}>Room Booking</p>
+      <h2 style={{ fontSize: "24px", fontWeight: 400, color: "#111", marginTop: "8px" }}>Request submitted.</h2>
+      <p style={{ color: "#555", marginTop: "8px" }}>The admin team will review and confirm your allocation shortly.</p>
+      <Link href="/dashboard" style={{ fontSize: "13px", color: "#1A1A2E" }}>← Back to dashboard</Link>
+    </div>
+  );
 
   return (
-    <>
-      <div className="page-header">
-        <h2>Book a Room</h2>
-        <p>Browse available rooms and submit a booking request for admin approval.</p>
-      </div>
+    <div style={{
+      minHeight: "100vh",
+      background: "#FAFAFA",
+      fontFamily: "Inter, system-ui, sans-serif",
+      color: "#111111",
+    }}>
+      <div style={{ maxWidth: "680px", margin: "0 auto", padding: "48px 32px" }}>
+        <Link href="/dashboard" style={{ fontSize: "13px", color: "#777", textDecoration: "none" }}>← Back</Link>
 
-      <div className="form-section" style={{ maxWidth: "100%", marginBottom: "var(--space-8)" }}>
-        <div className="form-section-title">Your Preferences</div>
-        <div className="form-grid">
-          <div className="form-group full-width">
-            <label className="form-label">Describe your ideal room (optional)</label>
-            <textarea
-              className="form-textarea"
-              value={intent}
-              onChange={(e) => setIntent(e.target.value)}
-              placeholder="e.g. Quiet room on a higher floor, preferably single occupancy near the study area…"
-              style={{ minHeight: 80 }}
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Preferred roommate roll number</label>
-            <input
-              className="form-input"
-              value={peerRoll}
-              onChange={(e) => setPeerRoll(e.target.value)}
-              placeholder="e.g. DL.BT.U4AID24124"
-            />
-          </div>
-        </div>
-      </div>
+        <h1 style={{ fontSize: "32px", fontWeight: 400, margin: "24px 0 32px", color: "#111" }}>
+          Find your room.
+        </h1>
 
-      <div className="table-container">
-        <div className="table-toolbar">
-          <div className="table-toolbar-title">Available Rooms ({rooms.length})</div>
+        <textarea
+          value={intent}
+          onChange={e => setIntent(e.target.value)}
+          onBlur={findMatches}
+          placeholder="What matters to you? (e.g. quiet room on a high floor, near my friend Arjun)"
+          style={{
+            width: "100%",
+            height: "80px",
+            border: "1px solid #D0D0D0",
+            borderRadius: "4px",
+            padding: "12px",
+            fontSize: "14px",
+            fontFamily: "inherit",
+            resize: "none",
+            background: "#fff",
+            color: "#111",
+            outline: "none",
+            boxSizing: "border-box",
+          }}
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); findMatches(); } }}
+        />
+
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "16px" }}>
+          <span style={{ fontSize: "13px", color: "#777", whiteSpace: "nowrap" }}>Add a roommate</span>
+          <input
+            value={peerRoll}
+            onChange={e => setPeerRoll(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && addPeer()}
+            placeholder="Roll number"
+            style={{
+              flex: 1,
+              border: "1px solid #D0D0D0",
+              borderRadius: "4px",
+              padding: "6px 10px",
+              fontSize: "13px",
+              fontFamily: "inherit",
+              background: "#fff",
+              outline: "none",
+            }}
+          />
+          <button
+            onClick={addPeer}
+            style={{
+              border: "1px solid #1A1A2E",
+              background: "transparent",
+              color: "#1A1A2E",
+              padding: "6px 12px",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "13px",
+              fontFamily: "inherit",
+            }}
+          >+ Add</button>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Room</th>
-              <th>Hostel</th>
-              <th>Floor</th>
-              <th>Occupancy</th>
-              <th>Noise</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rooms.length === 0 ? (
-              <tr><td colSpan={6} className="table-empty">No rooms available right now.</td></tr>
-            ) : rooms.map((room) => (
-              <tr key={String(room.room_id)}>
-                <td style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>{String(room.room_code)}</td>
-                <td>{String(room.hostel_code)}</td>
-                <td>{String(room.floor)}</td>
-                <td>
-                  <div className="occupancy-bar">
-                    <span style={{ fontSize: "var(--text-xs)", fontFamily: "var(--font-mono)" }}>
-                      {String(room.current_occupancy)}/{String(room.capacity)}
-                    </span>
-                    <div className="occupancy-track">
-                      <div
-                        className={`occupancy-fill ${Number(room.current_occupancy) / Number(room.capacity) > 0.5 ? "mid" : "low"}`}
-                        style={{ width: `${(Number(room.current_occupancy) / Number(room.capacity)) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  {"●".repeat(Number(room.noise_level) || 3)}
-                  {"○".repeat(5 - (Number(room.noise_level) || 3))}
-                </td>
-                <td>
-                  <button
-                    className={`btn btn-sm ${selectedRoom === String(room.room_id) ? "btn-primary" : "btn-secondary"}`}
-                    onClick={() => setSelectedRoom(String(room.room_id))}
-                  >
-                    {selectedRoom === String(room.room_id) ? "Selected" : "Select"}
-                  </button>
-                </td>
-              </tr>
+
+        {peers.length > 0 && (
+          <div style={{ display: "flex", gap: "6px", marginTop: "8px", flexWrap: "wrap" }}>
+            {peers.map(p => (
+              <span key={p} style={{
+                fontSize: "12px",
+                background: "#EBEBEB",
+                padding: "3px 8px",
+                borderRadius: "3px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}>
+                {p}
+                <button
+                  onClick={() => setPeers(prev => prev.filter(x => x !== p))}
+                  style={{ border: "none", background: "none", cursor: "pointer", color: "#777", padding: 0, fontSize: "12px" }}
+                >×</button>
+              </span>
             ))}
-          </tbody>
-        </table>
+          </div>
+        )}
+
+        <hr style={{ border: "none", borderTop: "1px solid #EBEBEB", margin: "24px 0" }} />
+
+        {isPending && (
+          <p style={{ fontSize: "13px", color: "#777", opacity: 0.7 }}>Finding best matches...</p>
+        )}
+
+        {matches.length > 0 && !isPending && (
+          <>
+            <p style={{ fontSize: "13px", color: "#777", marginBottom: "16px" }}>Best matches</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
+              {matches.map(room => {
+                const dots = Math.round(room.score / 20);
+                const isSelected = selectedRoom === room.room_id;
+                return (
+                  <div key={room.room_id} style={{
+                    border: `1px solid ${isSelected ? "#1A1A2E" : "#EBEBEB"}`,
+                    borderRadius: "6px",
+                    padding: "16px",
+                    background: "#fff",
+                    transition: "border-color 0.15s",
+                  }}>
+                    <p style={{ margin: 0, fontSize: "15px", fontWeight: 500, color: "#111" }}>{room.room_code}</p>
+                    <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#777" }}>Floor {room.floor}</p>
+                    <p style={{ margin: "8px 0 4px", fontSize: "13px", color: "#555" }}>
+                      {"●".repeat(dots)}{"○".repeat(5 - dots)} {room.score}%
+                    </p>
+                    <p style={{ margin: "0 0 12px", fontSize: "12px", color: "#777" }}>
+                      {room.label} · {room.current_occupancy}/{room.capacity} occupied
+                    </p>
+                    <button
+                      onClick={() => setSelectedRoom(isSelected ? null : room.room_id)}
+                      style={{
+                        width: "100%",
+                        border: "1px solid #1A1A2E",
+                        background: isSelected ? "#1A1A2E" : "transparent",
+                        color: isSelected ? "#fff" : "#1A1A2E",
+                        padding: "6px 0",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                        fontFamily: "inherit",
+                        transition: "background 0.15s, color 0.15s",
+                      }}
+                    >{isSelected ? "Selected ✓" : "Select"}</button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {selectedRoom && (
+              <div style={{ marginTop: "24px" }}>
+                {error && <p style={{ color: "#c00", fontSize: "13px", marginBottom: "8px" }}>{error}</p>}
+                <button
+                  onClick={submitRequest}
+                  style={{
+                    background: "#1A1A2E",
+                    color: "#fff",
+                    border: "none",
+                    padding: "10px 28px",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                    fontFamily: "inherit",
+                    cursor: "pointer",
+                  }}
+                >Submit Request →</button>
+              </div>
+            )}
+          </>
+        )}
+
+        {matches.length === 0 && !isPending && intent && (
+          <button
+            onClick={findMatches}
+            style={{
+              border: "1px solid #1A1A2E",
+              background: "transparent",
+              color: "#1A1A2E",
+              padding: "8px 20px",
+              borderRadius: "4px",
+              cursor: "pointer",
+              fontSize: "13px",
+              fontFamily: "inherit",
+            }}
+          >Find matches →</button>
+        )}
       </div>
-
-      {selectedRoom && (
-        <div className="form-actions" style={{ borderTop: "none", paddingTop: "var(--space-6)" }}>
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? "Submitting…" : "Submit Booking Request"}
-          </button>
-          <button className="btn btn-secondary" onClick={() => setSelectedRoom(null)}>
-            Cancel
-          </button>
-        </div>
-      )}
-
-      {toast && (
-        <div className="toast-container">
-          <div className={`toast toast-${toast.type}`}>{toast.msg}</div>
-        </div>
-      )}
-    </>
+    </div>
   );
 }
