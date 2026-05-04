@@ -58,17 +58,7 @@ export default async function StudentDashboard() {
         )}
       </div>
 
-      <div className="discord-cta">
-        <div>
-          <div className="discord-cta-title">Report issues via Discord</div>
-          <div className="discord-cta-sub">
-            Use <code>/report</code> in the AHCMS Discord server to file complaints directly.
-          </div>
-        </div>
-        <a href="#" className="btn btn-secondary btn-sm" target="_blank" rel="noopener">
-          Join Server
-        </a>
-      </div>
+
     </>
   );
 }
