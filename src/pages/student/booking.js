@@ -123,7 +123,7 @@ function renderPage(container, allRooms, allocation, bookingReqs, changeReqs) {
                   <label class="form-label">Target Room *</label>
                   <select class="form-select" id="change-target-room" name="to_room_id" required>
                     <option value="">— select a room —</option>
-                    ${targetList.map(r => `<option value="${r.room_id}">${r.room_id} · Fl ${r.floor} · ${r.type} · ${r.current_occupancy}/${r.capacity}</option>`).join('')}
+                    ${targetList.map(r => `<option value="${r.room_id}">${r.room_id} (${r.current_occupancy}/${r.capacity})</option>`).join('')}
                   </select>
                   ${targetList.length === 0 ? `<div style="font-size:var(--text-xs); color:var(--accent-red); margin-top:4px;">No available rooms in your hostel.</div>` : ''}
                 </div>

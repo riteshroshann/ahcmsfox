@@ -41,7 +41,7 @@ function eligibleRooms(rooms, gender, course) {
 }
 
 function roomOption(r) {
-  return `<option value="${r.room_id}">${r.room_id} · Fl ${r.floor} · ${r.type} · ${r.current_occupancy}/${r.capacity}</option>`;
+  return `<option value="${r.room_id}">${r.room_id} (${r.current_occupancy}/${r.capacity})</option>`;
 }
 
 // ── Entry point ────────────────────────────────────────────
