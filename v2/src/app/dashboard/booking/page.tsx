@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useCallback } from "react";
-import { createBrowserClient } from "@/lib/supabase-browser";
+import { createClient } from "@/lib/supabase-browser";
 import { parseRoomIntent, type ParsedRoomPrefs } from "@/app/actions/parseRoomIntent";
 import Link from "next/link";
 
@@ -32,7 +32,7 @@ function scoreRoom(room: Omit<RoomMatch, "score">, prefs: ParsedRoomPrefs): numb
 }
 
 export default function BookingPage() {
-  const supabase = createBrowserClient();
+  const supabase = createClient();
   const [intent, setIntent] = useState("");
   const [peerRoll, setPeerRoll] = useState("");
   const [peers, setPeers] = useState<string[]>([]);
