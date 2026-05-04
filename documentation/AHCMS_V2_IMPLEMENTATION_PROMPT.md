@@ -21,6 +21,12 @@ You are a principal-level full-stack engineer rewriting `ahcmsfox` — a SQLite/
 - ACID properties enforced via Postgres transactions with `FOR UPDATE` row locks
 - Schema must be 3NF/BCNF — no transitive dependencies
 
+**UI RULES (CRITICAL — READ THIS FIRST):**
+- **KEEP THE EXISTING UI.** The current frontend design in `src/style.css`, `src/pages/`, and `src/components/` is the baseline. Do NOT redesign pages from scratch. Port the existing layouts, components, and visual language into the Next.js app.
+- **Light mode ONLY.** Remove ALL dark mode code, dark theme toggles, `prefers-color-scheme` media queries, and dark CSS variables. The entire app must be white/light background everywhere — no exceptions.
+- **Minor polish only.** You may make small refinements (spacing, alignment, hover states) but the overall look, navigation structure, and page layouts must remain recognizable from the current version.
+- **No theme switchers.** No dark/light toggle in the nav or settings. The app ships with one theme: white.
+
 ---
 
 ## 1. CURRENT CODEBASE (What Exists)
@@ -271,29 +277,27 @@ Display using **Recharts** (no Chart.js, no D3):
 
 ---
 
-## 6. ROOM BOOKING — PREMIUM UX
+## 6. ROOM BOOKING — REFINEMENTS
 
-### New Flow (replacing old dropdown picker)
-1. **Single intent field:** "Describe your ideal room" — freeform text
-2. **AI parses intent** via Server Action calling Claude API → structured prefs JSON
-3. **System shows "Best Match" cards** — top 3 rooms ranked by preference score
-4. **Peer co-request:** "Add a roommate" — link by roll number
-5. **One-tap submit** → creates ROOM_BOOKING_REQUEST with parsed_prefs
+### Enhancement to existing booking flow
+Keep the current room booking page structure. Add these improvements on top:
+1. **Add an optional intent field:** "Describe your ideal room" — freeform text input above the existing room list
+2. **AI parses intent** via Server Action calling Claude API → structured prefs JSON → auto-filters the room list
+3. **"Best Match" badges** on rooms that score highest against parsed preferences
+4. **Peer co-request:** "Add a roommate" — link by roll number (inline field)
+5. Existing submit flow stays the same → creates ROOM_BOOKING_REQUEST with parsed_prefs added
 
 ### Intent Parser Server Action (`app/actions/parseRoomIntent.ts`)
 
 Call Claude API to extract: `{ floor_pref, noise_pref, features[], peer_roll_nos[], hostel_pref }`
 
-### Design Rules (Non-negotiable — Ive×Karpathy aesthetic)
-- Background: `#FAFAFA`
-- Text: `#111111` (primary), `#777777` (secondary)
-- Accent: single color — `#1A1A2E` (deep navy)
-- No card shadows — use `1px solid #EBEBEB` borders
-- Font: `Inter`, system-font fallback
-- Match scores as filled dots (●●●●○) not progress bars
-- "Select" button: transparent bg, `1px solid #1A1A2E`, hover = filled
-- No skeleton loaders — use opacity fade-in
-- No icons except functional (back arrow, plus)
+### Design Rules
+- **Keep the existing UI.** The current `style.css` is the source of truth for colors, spacing, typography.
+- **Light mode ONLY.** Strip every dark mode variable, media query, and toggle. White backgrounds everywhere.
+- Background: white (`#FFFFFF` or `#FAFAFA` as currently used)
+- Keep existing fonts, colors, card styles — only minor spacing/alignment polish
+- No new icon libraries or design system overhauls
+- Match scores can be shown as simple percentage text or subtle progress indicator
 
 ---
 
@@ -358,8 +362,8 @@ ALLOCATOR_SERVICE_API_KEY=
 1. Run `00001_ahcms_v2_schema.sql` migration on Supabase
 2. Seed reference tables: HOSTEL, ROOM_TYPE, COMPLAINT_CATEGORY, ROUTING_RULE
 3. Initialize Next.js 14 app with App Router + Supabase auth
-4. Build student dashboard + admin dashboard (port existing UI logic)
-5. Implement room booking with intent parser (Section 6)
+4. **Port existing UI into Next.js** — keep the same layouts, components, and styles. Strip ALL dark mode code. Light/white theme only.
+5. Implement room booking enhancements with intent parser (Section 6)
 6. Deploy `discord-bot` Edge Function + register slash commands
 7. Deploy `notify-staff` Edge Function + create DB webhook
 8. Build the allocator FastAPI service + deploy to Railway
