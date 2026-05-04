@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import nacl from "https://cdn.skypack.dev/tweetnacl@1.0.3?dts";
+import nacl from "https://esm.sh/tweetnacl@1.0.3";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const DISCORD_PUBLIC_KEY = Deno.env.get("DISCORD_PUBLIC_KEY")!;
