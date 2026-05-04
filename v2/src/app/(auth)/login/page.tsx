@@ -1,25 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase-browser";
 import { useRouter } from "next/navigation";
 
-type Role = "student" | "admin" | null;
-
 export default function LoginPage() {
-  const [selectedRole, setSelectedRole] = useState<Role>(null);
+  const [activeTab, setActiveTab] = useState<"student" | "admin">("student");
   const [email, setEmail] = useState("");
+  const [rollNo, setRollNo] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
-  async function handleLogin(e: React.FormEvent) {
+  useEffect(() => {
+    const theme = localStorage.getItem("ahcms_theme") || "light";
+    document.documentElement.setAttribute("data-theme", theme);
+  }, []);
+
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute("data-theme") || "light";
+    const next = current === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("ahcms_theme", next);
+  }
+
+  async function handleStudentLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (!rollNo || !password) { setError("All fields required."); return; }
     setLoading(true);
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+    // Students log in with roll_no as email alias
+    const studentEmail = `${rollNo.toLowerCase().replace(/[^a-z0-9]/g, "")}@ahcms.edu.in`;
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email: studentEmail,
+      password,
+    });
+
     if (authError) {
       setError(authError.message);
       setLoading(false);
@@ -29,152 +48,156 @@ export default function LoginPage() {
     router.push("/");
   }
 
-  // ── Role selection screen ──────────────────────────────────────────────────
-  if (!selectedRole) {
-    return (
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "var(--bg-root)",
-        padding: "24px",
-      }}>
-        <div style={{ marginBottom: "48px", textAlign: "center" }}>
-          <h1 style={{ fontSize: "var(--text-xl)", fontWeight: 600, letterSpacing: "-0.03em", marginBottom: "var(--space-2)" }}>
-            AHCMS
-          </h1>
-          <p style={{ fontSize: "var(--text-sm)", color: "var(--text-secondary)" }}>
-            Hostel &amp; Complaint Management
-          </p>
-        </div>
+  async function handleAdminLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!email || !password) { setError("All fields required."); return; }
+    setLoading(true);
 
-        <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "20px", letterSpacing: "0.05em", textTransform: "uppercase" }}>
-          Sign in as
-        </p>
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
-        <div style={{ display: "flex", gap: "16px", width: "100%", maxWidth: "480px" }}>
-          {/* Student card */}
-          <button
-            onClick={() => setSelectedRole("student")}
-            style={{
-              flex: 1,
-              padding: "32px 20px",
-              border: "1px solid #EBEBEB",
-              borderRadius: "8px",
-              background: "#fff",
-              cursor: "pointer",
-              textAlign: "center",
-              transition: "border-color 0.15s, box-shadow 0.15s",
-              fontFamily: "inherit",
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "#1A1A2E";
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "#EBEBEB";
-            }}
-          >
-            <div style={{ fontSize: "32px", marginBottom: "12px" }}>🎓</div>
-            <p style={{ fontSize: "15px", fontWeight: 500, color: "#111", margin: "0 0 4px" }}>Student</p>
-            <p style={{ fontSize: "12px", color: "#777", margin: 0 }}>Room booking, complaints, status</p>
-          </button>
-
-          {/* Admin card */}
-          <button
-            onClick={() => setSelectedRole("admin")}
-            style={{
-              flex: 1,
-              padding: "32px 20px",
-              border: "1px solid #EBEBEB",
-              borderRadius: "8px",
-              background: "#fff",
-              cursor: "pointer",
-              textAlign: "center",
-              transition: "border-color 0.15s",
-              fontFamily: "inherit",
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "#1A1A2E";
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "#EBEBEB";
-            }}
-          >
-            <div style={{ fontSize: "32px", marginBottom: "12px" }}>🏛️</div>
-            <p style={{ fontSize: "15px", fontWeight: 500, color: "#111", margin: "0 0 4px" }}>Admin / Staff</p>
-            <p style={{ fontSize: "12px", color: "#777", margin: 0 }}>Manage rooms, allocations, staff</p>
-          </button>
-        </div>
-      </div>
-    );
+    if (authError) {
+      setError(authError.message);
+      setLoading(false);
+      return;
+    }
+    router.refresh();
+    router.push("/");
   }
 
-  // ── Login form ─────────────────────────────────────────────────────────────
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "var(--bg-root)",
-    }}>
-      <div className="form-section" style={{ width: "100%", maxWidth: 400 }}>
-        <div style={{ marginBottom: "var(--space-8)" }}>
-          <button
-            onClick={() => { setSelectedRole(null); setError(""); }}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: "13px", color: "var(--text-secondary)", padding: "0 0 16px", fontFamily: "inherit" }}
-          >
-            ← Back
-          </button>
-          <h1 style={{ fontSize: "var(--text-xl)", fontWeight: 600, letterSpacing: "-0.03em", marginBottom: "var(--space-2)" }}>
-            {selectedRole === "admin" ? "Admin Sign in" : "Student Sign in"}
-          </h1>
-          <p style={{ fontSize: "var(--text-sm)", color: "var(--text-secondary)" }}>
-            {selectedRole === "admin" ? "Warden · Deputy Warden · Staff" : "Enter your institution credentials"}
-          </p>
+    <div className="login-page">
+      <div className="login-panel">
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          style={{
+            position: "absolute", top: "var(--space-6)", right: "var(--space-6)",
+            background: "transparent", border: "none", color: "var(--text-tertiary)",
+            cursor: "pointer", padding: "var(--space-2)", borderRadius: "var(--radius-md)",
+          }}
+          title="Toggle Theme"
+          aria-label="Toggle Theme"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+        </button>
+
+        {/* Brand */}
+        <div className="login-brand">
+          <div className="login-brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
+          <h1>AHCMS</h1>
+          <p>Amrita Hostel &amp; Complaint Management, Delhi NCR</p>
         </div>
 
-        <form onSubmit={handleLogin}>
-          <div className="form-group" style={{ marginBottom: "var(--space-5)" }}>
-            <label className="form-label" htmlFor="email">Email</label>
-            <input
-              id="email"
-              className="form-input"
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder={selectedRole === "admin" ? "warden@ahcms.edu.in" : "you@ahcms.edu.in"}
-              required
-              autoComplete="email"
-            />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: "var(--space-6)" }}>
-            <label className="form-label" htmlFor="password">Password</label>
-            <input
-              id="password"
-              className="form-input"
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          {error && (
-            <p style={{ fontSize: "var(--text-xs)", color: "var(--accent-red)", marginBottom: "var(--space-4)" }}>
-              {error}
-            </p>
-          )}
-
-          <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: "100%" }}>
-            {loading ? "Signing in…" : "Sign in"}
+        {/* Tabs */}
+        <div className="login-tabs">
+          <button
+            className={`login-tab ${activeTab === "student" ? "active" : ""}`}
+            onClick={() => { setActiveTab("student"); setError(""); }}
+          >
+            Student
           </button>
-        </form>
+          <button
+            className={`login-tab ${activeTab === "admin" ? "active" : ""}`}
+            onClick={() => { setActiveTab("admin"); setError(""); }}
+          >
+            Admin
+          </button>
+        </div>
+
+        {/* Student Login Form */}
+        {activeTab === "student" && (
+          <form className="login-form" onSubmit={handleStudentLogin} noValidate>
+            <div className="login-form-group">
+              <label htmlFor="s-roll">Roll Number</label>
+              <input
+                id="s-roll"
+                className="login-input"
+                type="text"
+                value={rollNo}
+                onChange={e => setRollNo(e.target.value)}
+                placeholder="e.g. DL.MBBS.U4AID24120"
+                autoComplete="username"
+              />
+            </div>
+            <div className="login-form-group">
+              <label htmlFor="s-pass">Password</label>
+              <input
+                id="s-pass"
+                className="login-input"
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                autoComplete="current-password"
+              />
+            </div>
+            <p className="login-hint">
+              Demo credentials &mdash; Roll: <code>DL.MBBS.U4AID24120</code> Pass: <code>Student@123</code>
+            </p>
+            {error && <div className="login-error">{error}</div>}
+            <button type="submit" className="login-btn" disabled={loading}>
+              {loading ? "Signing in…" : "Sign In"}
+            </button>
+          </form>
+        )}
+
+        {/* Admin Login Form */}
+        {activeTab === "admin" && (
+          <form className="login-form" onSubmit={handleAdminLogin} noValidate>
+            <div className="login-form-group">
+              <label htmlFor="a-email">Email</label>
+              <input
+                id="a-email"
+                className="login-input"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="admin@ahcms.edu.in"
+                autoComplete="username"
+              />
+            </div>
+            <div className="login-form-group">
+              <label htmlFor="a-pass">Password</label>
+              <input
+                id="a-pass"
+                className="login-input"
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                autoComplete="current-password"
+              />
+            </div>
+            <p className="login-hint">
+              Demo credentials — Email: <code>admin@ahcms.edu.in</code> Pass: <code>Admin@123</code>
+            </p>
+            {error && <div className="login-error">{error}</div>}
+            <button type="submit" className="login-btn" disabled={loading}>
+              {loading ? "Signing in…" : "Sign In"}
+            </button>
+          </form>
+        )}
+      </div>
+
+      {/* Art Panel */}
+      <div className="login-art">
+        <div className="login-art-content">
+          <h2>Your hostel,<br />fully managed.</h2>
+          <p>Room allocations, complaints, community — all in one place.</p>
+          <div className="login-art-dots">
+            <span className="dot dot-blue" />
+            <span className="dot dot-green" />
+            <span className="dot dot-purple" />
+          </div>
+        </div>
       </div>
     </div>
   );

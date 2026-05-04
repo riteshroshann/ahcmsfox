@@ -10,14 +10,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user) redirect("/login");
 
   const { data: profile } = await supabase
-    .from("STUDENT_PROFILE")
-    .select("name")
+    .from("student_profile")
+    .select("name, roll_no")
     .eq("student_id", user.id)
     .single();
 
   return (
     <div className="app-layout">
-      <Sidebar role="student" userName={profile?.name || user.email || "Student"} />
+      <Sidebar role="student" userName={profile?.name || user.email || "Student"} rollNo={profile?.roll_no} />
       <main className="main">{children}</main>
     </div>
   );
