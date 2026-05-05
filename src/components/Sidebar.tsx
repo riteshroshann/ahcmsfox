@@ -90,13 +90,13 @@ const adminNav: { section: string; items: NavItem[] }[] = [
       { label: "Students",   href: "/admin/students",   icon: ICONS.students },
     ],
   },
-  {
-    section: "Intelligence",
-    items: [
-      { label: "Allocator", href: "/admin/allocator", icon: ICONS.allocator },
-      { label: "Fairness",  href: "/admin/fairness",  icon: ICONS.fairness },
-    ],
-  },
+  // {
+  //   section: "Intelligence",
+  //   items: [
+  //     { label: "Allocator", href: "/admin/allocator", icon: ICONS.allocator },
+  //     { label: "Fairness",  href: "/admin/fairness",  icon: ICONS.fairness },
+  //   ],
+  // },
 ];
 
 function toggleTheme() {
