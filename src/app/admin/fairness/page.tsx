@@ -20,7 +20,7 @@ export default function FairnessDashboard() {
   async function loadData() {
     const [{ data: fData }, { data: sData }] = await Promise.all([
       supabase.from("v_complaint_fairness_summary").select("*"),
-      supabase.from("SOLVER_RUN").select("*").order("created_at", { ascending: false }).limit(10),
+      supabase.from("solver_run").select("*").order("created_at", { ascending: false }).limit(10),
     ]);
     setFairness(fData || []);
     setSolverRuns(sData || []);

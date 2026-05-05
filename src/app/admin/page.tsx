@@ -12,17 +12,17 @@ export default async function AdminDashboard() {
     { count: activeAllocs },
     { count: pendingBookings },
   ] = await Promise.all([
-    supabase.from("STUDENT_PROFILE").select("*", { count: "exact", head: true }).is("deleted_at", null),
-    supabase.from("ROOM").select("*", { count: "exact", head: true }),
-    supabase.from("COMPLAINT").select("*", { count: "exact", head: true }).not("status", "in", '("resolved","closed")'),
-    supabase.from("COMPLAINT").select("*", { count: "exact", head: true }),
-    supabase.from("ALLOCATION").select("*", { count: "exact", head: true }).eq("status", "active"),
-    supabase.from("ROOM_BOOKING_REQUEST").select("*", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("student_profile").select("*", { count: "exact", head: true }).is("deleted_at", null),
+    supabase.from("room").select("*", { count: "exact", head: true }),
+    supabase.from("complaint").select("*", { count: "exact", head: true }).not("status", "in", '("resolved","closed")'),
+    supabase.from("complaint").select("*", { count: "exact", head: true }),
+    supabase.from("allocation").select("*", { count: "exact", head: true }).eq("status", "active"),
+    supabase.from("room_booking_request").select("*", { count: "exact", head: true }).eq("status", "pending"),
   ]);
 
   const { data: recentComplaints } = await supabase
-    .from("COMPLAINT")
-    .select("ticket_id, description, severity, status, created_at, STUDENT_PROFILE(name), COMPLAINT_CATEGORY(name)")
+    .from("complaint")
+    .select("ticket_id, description, severity, status, created_at, student_profile(name), complaint_category(name)")
     .order("created_at", { ascending: false })
     .limit(5);
 

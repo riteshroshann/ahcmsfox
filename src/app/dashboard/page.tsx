@@ -6,10 +6,10 @@ export default async function StudentDashboard() {
   const { data: { user } } = await supabase.auth.getUser();
 
   const [{ data: profile }, { data: allocation }, { count: complaintCount }, { count: openCount }] = await Promise.all([
-    supabase.from("STUDENT_PROFILE").select("*").eq("student_id", user!.id).single(),
-    supabase.from("ALLOCATION").select("*, ROOM(room_code, hostel_code, floor, capacity, current_occupancy)").eq("student_id", user!.id).eq("status", "active").single(),
-    supabase.from("COMPLAINT").select("*", { count: "exact", head: true }).eq("student_id", user!.id),
-    supabase.from("COMPLAINT").select("*", { count: "exact", head: true }).eq("student_id", user!.id).not("status", "in", '("resolved","closed")'),
+    supabase.from("student_profile").select("*").eq("student_id", user!.id).single(),
+    supabase.from("allocation").select("*, room(room_code, hostel_code, floor, capacity, current_occupancy)").eq("student_id", user!.id).eq("status", "active").single(),
+    supabase.from("complaint").select("*", { count: "exact", head: true }).eq("student_id", user!.id),
+    supabase.from("complaint").select("*", { count: "exact", head: true }).eq("student_id", user!.id).not("status", "in", '("resolved","closed")'),
   ]);
 
   const room = allocation?.ROOM as Record<string, unknown> | null;

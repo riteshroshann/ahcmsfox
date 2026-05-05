@@ -5,23 +5,23 @@ export default async function AdminStudents() {
   const supabase = await createClient();
 
   const { data: students } = await supabase
-    .from("STUDENT_PROFILE")
-    .select("*, ALLOCATION!inner(room_id, status, ROOM(room_code))")
+    .from("student_profile")
+    .select("*, allocation!inner(room_id, status, room(room_code))")
     .is("deleted_at", null)
     .order("name");
 
   const { data: allStudents } = await supabase
-    .from("STUDENT_PROFILE")
+    .from("student_profile")
     .select("*")
     .is("deleted_at", null)
     .order("name");
 
   const studentsWithRooms = (allStudents || []).map((s) => {
     const match = (students || []).find(
-      (sw) => sw.student_id === s.student_id && (sw.ALLOCATION as Record<string, unknown>)?.status === "active"
+      (sw) => sw.student_id === s.student_id && (sw.allocation as Record<string, unknown>)?.status === "active"
     );
-    const alloc = match?.ALLOCATION as Record<string, unknown> | undefined;
-    const room = alloc?.ROOM as Record<string, string> | undefined;
+    const alloc = match?.allocation as Record<string, unknown> | undefined;
+    const room = alloc?.room as Record<string, string> | undefined;
     return { ...s, room_code: room?.room_code || null };
   });
 

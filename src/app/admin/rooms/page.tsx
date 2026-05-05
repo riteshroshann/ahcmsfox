@@ -15,8 +15,8 @@ export default function AdminRooms() {
 
   async function loadData() {
     const [{ data: roomData }, { data: bookingData }] = await Promise.all([
-      supabase.from("ROOM").select("*").order("hostel_code").order("floor").order("room_code"),
-      supabase.from("ROOM_BOOKING_REQUEST").select("*, STUDENT_PROFILE(name, roll_no)").order("created_at", { ascending: false }),
+      supabase.from("room").select("*").order("hostel_code").order("floor").order("room_code"),
+      supabase.from("room_booking_request").select("*, student_profile(name, roll_no)").order("created_at", { ascending: false }),
     ]);
     setRooms(roomData || []);
     setBookings(bookingData || []);
@@ -25,7 +25,7 @@ export default function AdminRooms() {
 
   async function handleBookingAction(requestId: string, action: "approved" | "rejected") {
     const { error } = await supabase
-      .from("ROOM_BOOKING_REQUEST")
+      .from("room_booking_request")
       .update({ status: action, updated_at: new Date().toISOString() })
       .eq("request_id", requestId);
 
@@ -113,8 +113,8 @@ export default function AdminRooms() {
               ) : bookings.map((b) => (
                 <tr key={String(b.request_id)}>
                   <td>
-                    <div style={{ fontWeight: 500, fontSize: "var(--text-sm)" }}>{(b.STUDENT_PROFILE as unknown as Record<string, string>)?.name}</div>
-                    <div style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}>{(b.STUDENT_PROFILE as unknown as Record<string, string>)?.roll_no}</div>
+                    <div style={{ fontWeight: 500, fontSize: "var(--text-sm)" }}>{(b.student_profile as unknown as Record<string, string>)?.name}</div>
+                    <div style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}>{(b.student_profile as unknown as Record<string, string>)?.roll_no}</div>
                   </td>
                   <td style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>{String(b.intent_text || "—")}</td>
                   <td><span className={`badge badge-${String(b.status)}`}>{String(b.status)}</span></td>

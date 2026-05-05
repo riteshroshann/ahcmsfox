@@ -15,7 +15,7 @@ export default function AllocatorPage() {
   const [toast, setToast] = useState<{ type: string; msg: string } | null>(null);
 
   useEffect(() => {
-    supabase.from("HOSTEL").select("*").order("code").then(({ data }) => setHostels(data || []));
+    supabase.from("hostel").select("*").order("code").then(({ data }) => setHostels(data || []));
   }, []);
 
   async function triggerSolver() {

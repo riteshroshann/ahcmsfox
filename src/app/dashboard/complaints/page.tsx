@@ -6,8 +6,8 @@ export default async function StudentComplaints() {
   const { data: { user } } = await supabase.auth.getUser();
 
   const { data: complaints } = await supabase
-    .from("COMPLAINT")
-    .select("*, COMPLAINT_CATEGORY(name)")
+    .from("complaint")
+    .select("*, complaint_category(name)")
     .eq("student_id", user!.id)
     .order("created_at", { ascending: false });
 

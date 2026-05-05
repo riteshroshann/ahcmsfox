@@ -6,8 +6,8 @@ export default async function StudentRooms() {
   const { data: { user } } = await supabase.auth.getUser();
 
   const { data: allocation } = await supabase
-    .from("ALLOCATION")
-    .select("*, ROOM(room_code, hostel_code, floor, capacity, current_occupancy, noise_level, features, status)")
+    .from("allocation")
+    .select("*, room(room_code, hostel_code, floor, capacity, current_occupancy, noise_level, features, status)")
     .eq("student_id", user!.id)
     .eq("status", "active")
     .single();
@@ -15,8 +15,8 @@ export default async function StudentRooms() {
   const room = allocation?.ROOM as Record<string, unknown> | null;
 
   const { data: roommates } = room ? await supabase
-    .from("ALLOCATION")
-    .select("STUDENT_PROFILE(name, roll_no, program)")
+    .from("allocation")
+    .select("student_profile(name, roll_no, program)")
     .eq("room_id", allocation!.room_id)
     .eq("status", "active")
     .neq("student_id", user!.id) : { data: null };
