@@ -80,8 +80,8 @@ export default async function AdminDashboard() {
               <tr><td colSpan={5} className="table-empty">No complaints yet.</td></tr>
             ) : recentComplaints.map((c) => (
               <tr key={c.ticket_id}>
-                <td>{(c.STUDENT_PROFILE as unknown as Record<string, string>)?.name || "—"}</td>
-                <td>{(c.COMPLAINT_CATEGORY as unknown as Record<string, string>)?.name || "—"}</td>
+                <td>{(c.student_profile as unknown as Record<string, string>)?.name || "—"}</td>
+                <td>{(c.complaint_category as unknown as Record<string, string>)?.name || "—"}</td>
                 <td><span className={`badge badge-${c.severity === "Critical" ? "expired" : c.severity === "High" ? "open" : "in-progress"}`}>{c.severity}</span></td>
                 <td><span className={`badge badge-${c.status.replace("_", "-")}`}>{c.status.replace("_", " ")}</span></td>
                 <td style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}>

@@ -37,7 +37,7 @@ export default async function StudentComplaints() {
               <tr><td colSpan={5} className="table-empty">No complaints filed yet.</td></tr>
             ) : complaints.map((c) => (
               <tr key={c.ticket_id}>
-                <td>{(c.COMPLAINT_CATEGORY as unknown as Record<string, string>)?.name || "—"}</td>
+                <td>{(c.complaint_category as unknown as Record<string, string>)?.name || "—"}</td>
                 <td style={{ maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis" }}>{c.description}</td>
                 <td><span className={`badge badge-${c.severity === "Critical" ? "expired" : c.severity === "High" ? "open" : c.severity === "Medium" ? "in-progress" : "active"}`}>{c.severity}</span></td>
                 <td><span className={`badge badge-${c.status.replace("_", "-")}`}>{c.status.replace("_", " ")}</span></td>

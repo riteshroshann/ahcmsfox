@@ -12,7 +12,7 @@ export default async function StudentRooms() {
     .eq("status", "active")
     .single();
 
-  const room = allocation?.ROOM as Record<string, unknown> | null;
+  const room = allocation?.room as Record<string, unknown> | null;
 
   const { data: roommates } = room ? await supabase
     .from("allocation")
@@ -84,7 +84,7 @@ export default async function StudentRooms() {
             <div className="form-section">
               <div className="form-section-title">Roommates</div>
               {roommates.map((rm, i) => {
-                const sp = rm.STUDENT_PROFILE as unknown as Record<string, string> | null;
+                const sp = rm.student_profile as unknown as Record<string, string> | null;
                 return (
                   <div key={i} style={{
                     padding: "var(--space-4)",

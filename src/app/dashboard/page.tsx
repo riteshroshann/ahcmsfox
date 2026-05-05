@@ -12,7 +12,7 @@ export default async function StudentDashboard() {
     supabase.from("complaint").select("*", { count: "exact", head: true }).eq("student_id", user!.id).not("status", "in", '("resolved","closed")'),
   ]);
 
-  const room = allocation?.ROOM as Record<string, unknown> | null;
+  const room = allocation?.room as Record<string, unknown> | null;
 
   return (
     <>
