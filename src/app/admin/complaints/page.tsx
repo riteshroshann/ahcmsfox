@@ -128,11 +128,14 @@ export default function AdminComplaints() {
                           const catName = (c.complaint_category as any)?.name;
                           const allowedRoles = categoryToRole[catName] || ["Warden", "Supervisor"];
                           return allowedRoles.includes(String(s.role));
-                        }).map((s) => (
-                          <option key={String(s.staff_id)} value={String(s.staff_id)}>
-                            {String(s.name)} ({String(s.active_tickets)})
-                          </option>
-                        ))}
+                        }).map((s) => {
+                          const roleLabel = String(s.role).replace(/_/g, " ");
+                          return (
+                            <option key={String(s.staff_id)} value={String(s.staff_id)}>
+                              {String(s.name)} · {roleLabel} ({String(s.active_tickets)} active)
+                            </option>
+                          );
+                        })}
                       </select>
                     )}
                     {c.status !== "resolved" && c.status !== "closed" && c.status !== "open" && (
