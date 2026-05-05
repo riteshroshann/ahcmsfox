@@ -5,43 +5,47 @@ import { createClient } from "@/lib/supabase-browser";
 
 export default function AdminStudents() {
   const supabase = createClient();
-  const [studentsWithRooms, setStudentsWithRooms] = useState<any[]>([]);
+  const [allStudents, setAllStudents] = useState<Record<string, unknown>[]>([]);
+  const [allocMap, setAllocMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [genderFilter, setGenderFilter] = useState<"All" | "M" | "F">("All");
 
   useEffect(() => {
     async function loadData() {
+      // Fetch all students
       const { data: students } = await supabase
-        .from("student_profile")
-        .select("*, allocation!inner(room_id, status, room(room_code))")
-        .is("deleted_at", null)
-        .order("name");
-
-      const { data: allStudents } = await supabase
         .from("student_profile")
         .select("*")
         .is("deleted_at", null)
         .order("name");
 
-      const mapped = (allStudents || []).map((s) => {
-        const match = (students || []).find(
-          (sw) => sw.student_id === s.student_id && (sw.allocation as any)?.status === "active"
-        );
-        const alloc = match?.allocation as any;
-        const room = alloc?.room as any;
-        return { ...s, room_code: room?.room_code || null };
-      });
+      // Fetch ALL active allocations separately (avoids the inner-join RLS block)
+      const { data: allocations } = await supabase
+        .from("allocation")
+        .select("student_id, room_id, status, room(room_code)")
+        .eq("status", "active");
 
-      setStudentsWithRooms(mapped);
+      // Build a map: student_id -> room_code
+      const map: Record<string, string> = {};
+      for (const a of allocations || []) {
+        const alloc = a as Record<string, unknown>;
+        const room = alloc.room as Record<string, string> | null;
+        if (room?.room_code) {
+          map[alloc.student_id as string] = room.room_code;
+        }
+      }
+
+      setAllStudents(students || []);
+      setAllocMap(map);
       setLoading(false);
     }
     loadData();
   }, []);
 
-  const filteredStudents = studentsWithRooms.filter((s) => {
-    if (genderFilter === "All") return true;
-    return s.gender === genderFilter;
-  });
+  const boys = allStudents.filter(s => s.gender === "M");
+  const girls = allStudents.filter(s => s.gender === "F");
+  const filteredStudents = genderFilter === "All" ? allStudents
+    : genderFilter === "M" ? boys : girls;
 
   return (
     <>
@@ -51,23 +55,14 @@ export default function AdminStudents() {
       </div>
 
       <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-6)" }}>
-        <button 
-          className={`filter-chip ${genderFilter === "All" ? "active" : ""}`} 
-          onClick={() => setGenderFilter("All")}
-        >
-          All Students ({studentsWithRooms.length})
+        <button className={`filter-chip ${genderFilter === "All" ? "active" : ""}`} onClick={() => setGenderFilter("All")}>
+          All Students ({allStudents.length})
         </button>
-        <button 
-          className={`filter-chip ${genderFilter === "M" ? "active" : ""}`} 
-          onClick={() => setGenderFilter("M")}
-        >
-          Boys ({studentsWithRooms.filter(s => s.gender === "M").length})
+        <button className={`filter-chip ${genderFilter === "M" ? "active" : ""}`} onClick={() => setGenderFilter("M")}>
+          Boys ({boys.length})
         </button>
-        <button 
-          className={`filter-chip ${genderFilter === "F" ? "active" : ""}`} 
-          onClick={() => setGenderFilter("F")}
-        >
-          Girls ({studentsWithRooms.filter(s => s.gender === "F").length})
+        <button className={`filter-chip ${genderFilter === "F" ? "active" : ""}`} onClick={() => setGenderFilter("F")}>
+          Girls ({girls.length})
         </button>
       </div>
 
@@ -92,19 +87,24 @@ export default function AdminStudents() {
             <tbody>
               {filteredStudents.length === 0 ? (
                 <tr><td colSpan={7} className="table-empty">No students found.</td></tr>
-              ) : filteredStudents.map((s) => (
-                <tr key={s.student_id}>
-                  <td style={{ fontWeight: 500 }}>{s.name}</td>
-                  <td style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)" }}>{s.roll_no}</td>
-                  <td>{s.program}</td>
-                  <td>{s.batch}</td>
-                  <td>{s.hostel_code}</td>
-                  <td style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
-                    {s.room_code || <span style={{ color: "var(--text-tertiary)" }}>—</span>}
-                  </td>
-                  <td>{s.gender}</td>
-                </tr>
-              ))}
+              ) : filteredStudents.map((s) => {
+                const roomCode = allocMap[s.student_id as string];
+                return (
+                  <tr key={s.student_id as string}>
+                    <td style={{ fontWeight: 500 }}>{s.name as string}</td>
+                    <td style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)" }}>{s.roll_no as string}</td>
+                    <td>{s.program as string}</td>
+                    <td>{s.batch as string}</td>
+                    <td>{s.hostel_code as string}</td>
+                    <td style={{ fontFamily: "var(--font-mono)", fontWeight: 500 }}>
+                      {roomCode
+                        ? <span style={{ color: "var(--text-primary)" }}>{roomCode}</span>
+                        : <span style={{ color: "var(--text-tertiary)" }}>—</span>}
+                    </td>
+                    <td>{s.gender as string}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
