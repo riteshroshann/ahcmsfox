@@ -16,14 +16,20 @@ export default function AdminComplaints() {
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
-    const [{ data: cData }, { data: sData }] = await Promise.all([
+    const [cRes, sRes] = await Promise.all([
       supabase.from("complaint")
         .select("*, student_profile(name, roll_no, hostel_code), complaint_category(name), staff(name)")
         .order("created_at", { ascending: false }),
       supabase.from("staff").select("*").eq("availability", true).order("active_tickets"),
     ]);
-    setComplaints(cData || []);
-    setStaff(sData || []);
+    
+    if (cRes.error) {
+      setToast({ type: "error", msg: "Supabase Error: " + cRes.error.message });
+      console.error("COMPLAINT FETCH ERROR:", cRes.error);
+    }
+    
+    setComplaints(cRes.data || []);
+    setStaff(sRes.data || []);
     setLoading(false);
   }
 
