@@ -62,6 +62,8 @@ export default function BookingPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [directAssigned, setDirectAssigned] = useState(false);
+  const [intentText, setIntentText] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => { init(); }, []);
 
@@ -87,15 +89,29 @@ export default function BookingPage() {
 
     if (alloc) {
       setAllocation(alloc);
-      setLoading(false);
-      return;
     }
 
-    // No allocation — find best room based on stored prefs
-    if (!profile) { setLoading(false); return; }
+    if (profile) {
+      await searchRooms(profile, "");
+    }
+  }
 
+  async function searchRooms(profile: Record<string, unknown>, intent: string) {
+    setIsSearching(true);
     const hostel = profile.hostel_code as string;
-    const myNoise = (profile.noise_pref as number) || 3;
+    
+    // Parse intent locally for fast demo speed
+    const text = intent.toLowerCase();
+    let myNoise = (profile.noise_pref as number) || 3;
+    let requiredFloor: number | null = null;
+    let requiredFeatures: string[] = [];
+
+    if (text.includes("quiet")) myNoise = 1;
+    if (text.includes("lively") || text.includes("social")) myNoise = 5;
+    if (text.includes("high floor")) requiredFloor = 8;
+    if (text.includes("ground floor")) requiredFloor = 1;
+    if (text.includes("ac")) requiredFeatures.push("AC");
+    if (text.includes("attached bath")) requiredFeatures.push("Attached Bath");
 
     const { data: rooms } = await supabase
       .from("room")
@@ -108,13 +124,24 @@ export default function BookingPage() {
       (r: Record<string, unknown>) => (r.current_occupancy as number) < (r.capacity as number)
     );
 
-    if (available.length === 0) { setLoading(false); return; }
+    if (available.length === 0) { 
+      setBestRoom(null);
+      setLoading(false);
+      setIsSearching(false);
+      return; 
+    }
 
-    // Score rooms by noise match + vacancy
-    const scored = available.map((r: Record<string, unknown>) => ({
-      ...r,
-      _score: 100 - Math.abs((r.noise_level as number || 3) - myNoise) * 15 + (r.current_occupancy as number === 0 ? 5 : 0)
-    }));
+    // Score rooms
+    const scored = available.map((r: Record<string, unknown>) => {
+      let score = 100 - Math.abs((r.noise_level as number || 3) - myNoise) * 15 + (r.current_occupancy as number === 0 ? 5 : 0);
+      if (requiredFloor && r.floor !== requiredFloor) score -= 40;
+      if (requiredFloor && r.floor === requiredFloor) score += 30;
+      requiredFeatures.forEach(f => {
+        if ((r.features as string[])?.includes(f)) score += 20;
+      });
+      return { ...r, _score: score };
+    });
+    
     scored.sort((a, b) => (b._score as number) - (a._score as number));
     const top = scored[0] as RoomInfo & { _score: number };
     setBestRoom(top);
@@ -140,10 +167,15 @@ export default function BookingPage() {
         };
         setRoommate(rm);
         setCompatibility(computeCompatibility(myNoise, profile.sleep_pref as string || "normal", rm));
+      } else {
+        setRoommate(null);
       }
+    } else {
+      setRoommate(null);
     }
 
     setLoading(false);
+    setIsSearching(false);
   }
 
   async function directAssign() {
@@ -227,6 +259,8 @@ export default function BookingPage() {
 
       <div style={{ maxWidth: 600, marginBottom: "var(--space-6)" }}>
         <textarea
+          value={intentText}
+          onChange={(e) => setIntentText(e.target.value)}
           placeholder="e.g. quiet room on a high floor, near my friend Arjun"
           style={{
             width: "100%", height: "80px", border: "1px solid var(--border-subtle)",
@@ -236,7 +270,13 @@ export default function BookingPage() {
           }}
         />
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "var(--space-2)" }}>
-          <button className="btn btn-secondary btn-sm">Find via AI</button>
+          <button 
+            className="btn btn-secondary btn-sm" 
+            onClick={() => myProfile && searchRooms(myProfile, intentText)}
+            disabled={isSearching}
+          >
+            {isSearching ? "Finding…" : "Find via AI"}
+          </button>
         </div>
       </div>
 
