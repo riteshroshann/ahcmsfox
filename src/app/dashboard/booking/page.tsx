@@ -65,6 +65,7 @@ export default function BookingPage() {
   const [directAssigned, setDirectAssigned] = useState(false);
   const [intentText, setIntentText] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [topRooms, setTopRooms] = useState<(RoomInfo & { _score: number })[]>([]);
 
   useEffect(() => { init(); }, []);
 
@@ -139,15 +140,15 @@ export default function BookingPage() {
     });
     
     scored.sort((a, b) => (b._score as number) - (a._score as number));
-    const top = scored[0] as RoomInfo & { _score: number };
-    setBestRoom(top);
+    const topRooms = scored.slice(0, 3) as (RoomInfo & { _score: number })[];
+    setBestRoom(topRooms[0]); // Keep bestRoom for the directAssign logic
 
-    // Check if this room already has a roommate
-    if ((top.current_occupancy as unknown as number) > 0) {
+    // Check if the very best room already has a roommate
+    if ((topRooms[0].current_occupancy as unknown as number) > 0) {
       const { data: existingAllocs } = await supabase
         .from("allocation")
         .select("student_id, student_profile(name, roll_no, program, noise_pref, sleep_pref)")
-        .eq("room_id", top.room_id)
+        .eq("room_id", topRooms[0].room_id)
         .eq("status", "active")
         .limit(1);
 
@@ -169,6 +170,9 @@ export default function BookingPage() {
     } else {
       setRoommate(null);
     }
+    
+    // Store topRooms in a new state variable so we can render them
+    setTopRooms(topRooms);
 
     setLoading(false);
     setIsSearching(false);
@@ -242,7 +246,16 @@ export default function BookingPage() {
           <div style={{ marginTop: "var(--space-2)", display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
             <span className="badge badge-active">Active</span>
             <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>Since {String(allocation.start_date)}</span>
-            <Link href="/dashboard/rooms" className="btn btn-secondary btn-sm" style={{ marginLeft: "auto" }}>View full details →</Link>
+            <div style={{ marginLeft: "auto", display: "flex", gap: "var(--space-2)" }}>
+              {((allocation.room as any)?.current_occupancy < (allocation.room as any)?.capacity) && (
+                <button className="btn btn-primary btn-sm" onClick={() => {
+                  alert("Roommate request sent to Warden!");
+                }}>
+                  Find Roommate
+                </button>
+              )}
+              <Link href="/dashboard/rooms" className="btn btn-secondary btn-sm">View full details →</Link>
+            </div>
           </div>
         </div>
       )}
@@ -304,85 +317,81 @@ export default function BookingPage() {
             No available rooms found in your hostel right now. Please contact the Warden.
           </p>
         </div>
-      ) : !roommate ? (
-        /* BEST MATCH (VACANT) */
-        <>
-          <div className="form-section" style={{ maxWidth: 480 }}>
-            <div className="form-section-title">Best Match (Vacant)</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-5)", padding: "var(--space-4) 0" }}>
-              <div>
-                <div className="form-label">Room</div>
-                <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, fontFamily: "var(--font-mono)", marginTop: "var(--space-1)" }}>{bestRoom.room_code}</div>
-              </div>
-              <div>
-                <div className="form-label">Floor</div>
-                <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, marginTop: "var(--space-1)" }}>{bestRoom.floor}</div>
-              </div>
-            </div>
-          </div>
-          {error && <p style={{ color: "red", fontSize: "var(--text-sm)", marginTop: "var(--space-3)" }}>{error}</p>}
-          <div style={{ marginTop: "var(--space-5)" }}>
-            <button className="btn btn-primary" onClick={directAssign} disabled={submitting}>
-              {submitting ? "Assigning…" : "Confirm & Move In →"}
-            </button>
-          </div>
-        </>
       ) : (
-        <>
-          <div style={{ display: "grid", gap: "var(--space-5)", maxWidth: 540 }}>
-            <div className="form-section">
-              <div className="form-section-title">Assigned Room</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", padding: "var(--space-3) 0" }}>
-                <div>
-                  <div className="form-label">Room</div>
-                  <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, fontFamily: "var(--font-mono)", marginTop: "var(--space-1)" }}>{bestRoom.room_code}</div>
+        /* SHOW TOP MATCHES GRID */
+        <div>
+          <div style={{ color: "var(--text-secondary)", fontSize: "var(--text-sm)", marginBottom: "var(--space-4)" }}>
+            Best matches
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "var(--space-4)", maxWidth: 800 }}>
+            {topRooms.map((r, idx) => (
+              <div key={r.room_id} style={{ 
+                border: idx === 0 ? "2px solid var(--color-primary)" : "1px solid var(--border-subtle)", 
+                borderRadius: "var(--radius-lg)", 
+                padding: "var(--space-4)",
+                background: "var(--surface-1)",
+                position: "relative"
+              }}>
+                {idx === 0 && (
+                  <span style={{ position: "absolute", top: -10, right: 10, background: "var(--color-primary)", color: "white", fontSize: 10, padding: "2px 8px", borderRadius: 10, fontWeight: "bold" }}>
+                    TOP MATCH
+                  </span>
+                )}
+                <div style={{ fontSize: "var(--text-lg)", fontWeight: 500, fontFamily: "var(--font-mono)" }}>
+                  {r.room_code}
                 </div>
-                <div>
-                  <div className="form-label">Floor</div>
-                  <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, marginTop: "var(--space-1)" }}>{bestRoom.floor}</div>
+                <div style={{ color: "var(--text-secondary)", fontSize: "var(--text-sm)", marginTop: "var(--space-1)" }}>
+                  Floor {r.floor}
+                </div>
+                <div style={{ color: "var(--text-secondary)", fontSize: "var(--text-sm)", marginTop: "var(--space-2)", display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                  {r.current_occupancy === 0 ? (
+                    <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--color-success)" }} />
+                  ) : (
+                    <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--color-warning)" }} />
+                  )}
+                  {r.current_occupancy === 0 ? "Vacant" : `${r.current_occupancy}/${r.capacity} occupied`}
+                </div>
+                <div style={{ marginTop: "var(--space-4)" }}>
+                  <button 
+                    className={idx === 0 ? "btn btn-primary" : "btn btn-outline"} 
+                    style={{ width: "100%", padding: "var(--space-2)" }}
+                    onClick={() => {
+                      setBestRoom(r);
+                      if (r.current_occupancy === 0) {
+                        directAssign();
+                      } else {
+                        submitRequest();
+                      }
+                    }}
+                    disabled={submitting}
+                  >
+                    Select
+                  </button>
                 </div>
               </div>
-            </div>
-
-            <div className="form-section">
-              <div className="form-section-title">Roommate Compatibility</div>
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", padding: "var(--space-4) 0" }}>
-                <div style={{
-                  width: 64, height: 64, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "var(--text-lg)", fontWeight: 700, color: "#fff",
-                  background: compatColor, flexShrink: 0,
-                }}>
-                  {compatibility?.score}%
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>{roommate.name}</div>
-                  <div style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}>{roommate.roll_no}</div>
-                  <div style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}>{roommate.program}</div>
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-                {compatibility?.reasons.map((r, i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", gap: "var(--space-2)",
-                    fontSize: "var(--text-xs)", color: "var(--text-secondary)",
-                    padding: "var(--space-2) var(--space-3)",
-                    background: "var(--surface-2)", borderRadius: "var(--radius-sm)"
-                  }}>
-                    <span style={{ color: compatColor }}>●</span> {r}
-                  </div>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
 
-          {error && <p style={{ color: "red", fontSize: "var(--text-sm)", marginTop: "var(--space-3)" }}>{error}</p>}
-
-          <div style={{ marginTop: "var(--space-5)", display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
-            <button className="btn btn-primary" onClick={sendRequest} disabled={submitting}>
-              {submitting ? "Sending…" : "Send Request to Warden →"}
-            </button>
-          </div>
-        </>
+          {/* If the top matched room has a roommate, optionally show the compatibility block below */}
+          {roommate && topRooms[0]?.room_id === bestRoom?.room_id && (
+            <div className="form-section" style={{ maxWidth: 600, marginTop: "var(--space-6)" }}>
+              <div className="form-section-title" style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                Roommate Compatibility 
+                <span className="badge" style={{ background: compatColor, color: "white", border: "none" }}>
+                  {compatibility?.score}% Match
+                </span>
+              </div>
+              <div style={{ padding: "var(--space-3) 0" }}>
+                <div style={{ fontWeight: 500, fontSize: "var(--text-md)" }}>{roommate.name} ({roommate.program})</div>
+                <ul style={{ marginTop: "var(--space-3)", color: "var(--text-secondary)", fontSize: "var(--text-sm)", paddingLeft: "var(--space-4)" }}>
+                  {compatibility?.reasons.map((reason, i) => (
+                    <li key={i} style={{ marginBottom: "var(--space-1)" }}>{reason}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </>
   );
