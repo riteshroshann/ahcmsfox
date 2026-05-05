@@ -70,31 +70,38 @@ export default function BookingPage() {
   useEffect(() => { init(); }, []);
 
   async function init() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
 
-    // Load my profile
-    const { data: profile } = await supabase
-      .from("student_profile")
-      .select("*")
-      .eq("student_id", user.id)
-      .single();
-    setMyProfile(profile);
+      // Load my profile
+      const { data: profile } = await supabase
+        .from("student_profile")
+        .select("*")
+        .eq("student_id", user.id)
+        .single();
+      setMyProfile(profile);
 
-    // Check if already allocated
-    const { data: alloc } = await supabase
-      .from("allocation")
-      .select("*, room(room_code, floor, hostel_code, capacity, current_occupancy, noise_level, features)")
-      .eq("student_id", user.id)
-      .eq("status", "active")
-      .single();
+      // Check if already allocated
+      const { data: alloc } = await supabase
+        .from("allocation")
+        .select("*, room(room_code, floor, hostel_code, capacity, current_occupancy, noise_level, features)")
+        .eq("student_id", user.id)
+        .eq("status", "active")
+        .single();
 
-    if (alloc) {
-      setAllocation(alloc);
-    }
+      if (alloc) {
+        setAllocation(alloc);
+      }
 
-    if (profile) {
-      await searchRooms(profile, "");
+      if (profile) {
+        await searchRooms(profile, "");
+      } else {
+        setLoading(false);
+      }
+    } catch (e) {
+      console.error(e);
+      setLoading(false);
     }
   }
 
