@@ -267,32 +267,56 @@ export default function BookingPage() {
         </div>
       )}
 
-      {/* SEARCH BOX FOR NEW ROOM */}
-      <div className="page-header" style={{ marginTop: allocation ? "var(--space-8)" : 0 }}>
-        <h2>{allocation ? "Request Room Change" : "Find your room"}</h2>
-        <p>Tell us what matters to you, or let us match you based on your profile.</p>
-      </div>
+      {/* SEARCH BOX */}
+      <div style={{ 
+        display: "flex", 
+        flexDirection: "column", 
+        alignItems: "center", 
+        justifyContent: "center",
+        marginTop: "10vh",
+        marginBottom: "10vh",
+        textAlign: "center"
+      }}>
+        <h2 style={{ fontSize: "var(--text-2xl)", marginBottom: "var(--space-2)" }}>
+          {allocation 
+            ? ((allocation.room as any)?.current_occupancy < (allocation.room as any)?.capacity 
+                ? "Request a Roommate" 
+                : "Request Room Change")
+            : "Find your room"}
+        </h2>
+        <p style={{ color: "var(--text-secondary)", marginBottom: "var(--space-5)" }}>
+          {allocation && (allocation.room as any)?.current_occupancy < (allocation.room as any)?.capacity
+            ? "Tell us what you're looking for in a roommate, and we'll find the best match for your empty bed."
+            : "Tell us what matters to you, or let us match you based on your profile."}
+        </p>
 
-      <div style={{ maxWidth: 600, marginBottom: "var(--space-6)" }}>
-        <textarea
-          value={intentText}
-          onChange={(e) => setIntentText(e.target.value)}
-          placeholder="e.g. quiet room on a high floor, near my friend Arjun"
-          style={{
-            width: "100%", height: "80px", border: "1px solid var(--border-subtle)",
-            borderRadius: "var(--radius-md)", padding: "var(--space-3)", fontSize: "var(--text-sm)",
-            fontFamily: "inherit", resize: "none", background: "var(--surface-1)",
-            color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
-          }}
-        />
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "var(--space-2)" }}>
-          <button 
-            className="btn btn-secondary btn-sm" 
-            onClick={() => myProfile && searchRooms(myProfile, intentText)}
-            disabled={isSearching}
-          >
-            {isSearching ? "Finding…" : "Find via AI"}
-          </button>
+        <div style={{ width: "100%", maxWidth: 640 }}>
+          <textarea
+            value={intentText}
+            onChange={(e) => setIntentText(e.target.value)}
+            placeholder={
+              allocation && (allocation.room as any)?.current_occupancy < (allocation.room as any)?.capacity
+                ? "e.g. I need a roommate who is vegetarian and sleeps early..."
+                : "e.g. quiet room on a high floor, near my friend Arjun"
+            }
+            style={{
+              width: "100%", height: "120px", border: "1px solid var(--border-subtle)",
+              borderRadius: "var(--radius-lg)", padding: "var(--space-4)", fontSize: "var(--text-md)",
+              fontFamily: "inherit", resize: "none", background: "var(--surface-1)",
+              color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.05)"
+            }}
+          />
+          <div style={{ display: "flex", justifyContent: "center", marginTop: "var(--space-4)" }}>
+            <button 
+              className="btn btn-primary" 
+              style={{ padding: "var(--space-3) var(--space-6)", fontSize: "var(--text-md)", borderRadius: "var(--radius-full)" }}
+              onClick={() => myProfile && searchRooms(myProfile, intentText)}
+              disabled={isSearching}
+            >
+              {isSearching ? "Finding Match…" : "Find via AI ✨"}
+            </button>
+          </div>
         </div>
       </div>
 
