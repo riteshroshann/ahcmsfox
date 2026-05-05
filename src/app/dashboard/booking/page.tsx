@@ -367,7 +367,7 @@ export default function BookingPage() {
                       if (r.current_occupancy === 0) {
                         directAssign();
                       } else {
-                        submitRequest();
+                        sendRequest();
                       }
                     }}
                     disabled={submitting}
