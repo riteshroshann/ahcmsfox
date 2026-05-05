@@ -14,19 +14,19 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  const { data: ticket } = await sb.from("COMPLAINT")
-    .select("*, COMPLAINT_CATEGORY(name, default_role, sla_minutes), STUDENT_PROFILE(name, hostel_code)")
+  const { data: ticket } = await sb.from("complaint")
+    .select("*, complaint_category(name, default_role, sla_minutes), student_profile(name, hostel_code)")
     .eq("ticket_id", record.ticket_id)
     .single();
 
   if (!ticket) return Response.json({ error: "Ticket not found" });
 
-  const category = ticket.COMPLAINT_CATEGORY as Record<string, unknown>;
-  const student = ticket.STUDENT_PROFILE as Record<string, unknown>;
+  const category = ticket.complaint_category as Record<string, unknown>;
+  const student = ticket.student_profile as Record<string, unknown>;
   const hostelCode = String(student?.hostel_code || "");
 
   // route: find least-loaded staff matching role + hostel
-  const { data: staffList } = await sb.from("STAFF")
+  const { data: staffList } = await sb.from("staff")
     .select("*")
     .eq("role", String(category?.default_role || "Supervisor"))
     .eq("hostel_code", hostelCode)
@@ -38,7 +38,7 @@ serve(async (req) => {
   const assignee = staffList?.[0];
 
   if (assignee) {
-    await sb.from("COMPLAINT").update({
+    await sb.from("complaint").update({
       assigned_to: assignee.staff_id,
       status: "assigned",
       updated_at: new Date().toISOString(),
@@ -79,7 +79,7 @@ serve(async (req) => {
 
         if (threadRes.ok) {
           const thread = await threadRes.json();
-          await sb.from("COMPLAINT").update({
+          await sb.from("complaint").update({
             discord_thread_id: thread.id,
             discord_channel_id: channelId,
           }).eq("ticket_id", record.ticket_id);
@@ -115,7 +115,7 @@ serve(async (req) => {
   }
 
   // log fairness
-  await sb.from("COMPLAINT_FAIRNESS_LOG").insert({
+  await sb.from("complaint_fairness_log").insert({
     ticket_id: record.ticket_id,
     hostel_code: hostelCode,
     student_group: String(student?.hostel_code || ""),
@@ -126,7 +126,7 @@ serve(async (req) => {
 
   // log notification
   if (assignee) {
-    await sb.from("NOTIFICATION").insert({
+    await sb.from("notification").insert({
       user_id: assignee.staff_id,
       channel: ticket.severity === "Critical" ? "sms" : "discord",
       payload: { ticket_id: record.ticket_id, severity: ticket.severity, category: category?.name },

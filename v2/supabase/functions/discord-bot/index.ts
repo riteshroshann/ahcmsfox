@@ -79,7 +79,7 @@ serve(async (req) => {
       const roomCode = options?.find((o: { name: string }) => o.name === "room_code")?.value || "";
 
       const { data: student } = await sb
-        .from("STUDENT_PROFILE")
+        .from("student_profile")
         .select("student_id, hostel_code")
         .eq("discord_id", userId)
         .single();
@@ -87,25 +87,25 @@ serve(async (req) => {
       if (!student) {
         return Response.json({
           type: 4,
-          data: { content: "Your Discord account is not linked to an AHCMS student profile. Contact admin.", flags: 64 },
+          data: { content: `Your Discord account (ID: **${userId}**) is not linked to an AHCMS student profile. Please update your STUDENT_PROFILE in Supabase with this discord_id.`, flags: 64 },
         });
       }
 
       const { data: catRow } = await sb
-        .from("COMPLAINT_CATEGORY")
+        .from("complaint_category")
         .select("category_id")
         .eq("name", CATEGORY_MAP[category] || "Other")
         .single();
 
       let roomId = null;
       if (roomCode) {
-        const { data: room } = await sb.from("ROOM").select("room_id").eq("room_code", roomCode).single();
+        const { data: room } = await sb.from("room").select("room_id").eq("room_code", roomCode).single();
         roomId = room?.room_id || null;
       }
 
       const severity = classifySeverity(description);
 
-      const { data: ticket, error } = await sb.from("COMPLAINT").insert({
+      const { data: ticket, error } = await sb.from("complaint").insert({
         student_id: student.student_id,
         room_id: roomId,
         category_id: catRow?.category_id || 8,
@@ -131,8 +131,8 @@ serve(async (req) => {
 
     if (name === "status") {
       const ticketId = options?.find((o: { name: string }) => o.name === "ticket_id")?.value;
-      const { data: ticket } = await sb.from("COMPLAINT")
-        .select("ticket_id, status, severity, created_at, resolved_at, COMPLAINT_CATEGORY(name)")
+      const { data: ticket } = await sb.from("complaint")
+        .select("ticket_id, status, severity, created_at, resolved_at, complaint_category(name)")
         .eq("ticket_id", ticketId)
         .single();
 
@@ -140,7 +140,7 @@ serve(async (req) => {
         return Response.json({ type: 4, data: { content: "Ticket not found.", flags: 64 } });
       }
 
-      const cat = (ticket.COMPLAINT_CATEGORY as Record<string, string>)?.name || "—";
+      const cat = (ticket.complaint_category as Record<string, string>)?.name || "—";
       return Response.json({
         type: 4,
         data: {
@@ -151,12 +151,12 @@ serve(async (req) => {
     }
 
     if (name === "my-tickets") {
-      const { data: student } = await sb.from("STUDENT_PROFILE").select("student_id").eq("discord_id", userId).single();
+      const { data: student } = await sb.from("student_profile").select("student_id").eq("discord_id", userId).single();
       if (!student) {
-        return Response.json({ type: 4, data: { content: "Account not linked.", flags: 64 } });
+        return Response.json({ type: 4, data: { content: `Account not linked. Your Discord ID is **${userId}**. Update Supabase.`, flags: 64 } });
       }
 
-      const { data: tickets } = await sb.from("COMPLAINT")
+      const { data: tickets } = await sb.from("complaint")
         .select("ticket_id, status, severity, created_at")
         .eq("student_id", student.student_id)
         .order("created_at", { ascending: false })
