@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase-browser";
 import Link from "next/link";
+import { getRoomsForHostel } from "@/app/actions/rooms";
 
 interface RoomInfo {
   room_id: string;
@@ -113,12 +114,7 @@ export default function BookingPage() {
     if (text.includes("ac")) requiredFeatures.push("AC");
     if (text.includes("attached bath")) requiredFeatures.push("Attached Bath");
 
-    const { data: rooms } = await supabase
-      .from("room")
-      .select("*, room_type(label)")
-      .eq("hostel_code", hostel)
-      .neq("status", "maintenance")
-      .order("floor");
+    const rooms = await getRoomsForHostel(hostel);
 
     const available = (rooms || []).filter(
       (r: Record<string, unknown>) => (r.current_occupancy as number) < (r.capacity as number)
