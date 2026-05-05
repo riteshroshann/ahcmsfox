@@ -54,12 +54,18 @@ export default function BookingPage() {
         .from("room")
         .select("room_id, room_code, floor, capacity, current_occupancy, noise_level, features, room_type(label)")
         .neq("status", "maintenance")
-        .lt("current_occupancy", supabase.from("room").select("capacity") as unknown as number)
-        .limit(20);
+        .filter("current_occupancy", "lt", 999)
+        .gt("capacity", 0)
+        .limit(40);
+
+      // Client-side filter: only rooms with vacancies
+      const availableRooms = (rooms || []).filter(
+        (r: Record<string, unknown>) => (r.current_occupancy as number) < (r.capacity as number)
+      );
 
       if (!rooms) return;
 
-      const scored: RoomMatch[] = (rooms as Record<string, unknown>[]).map(r => {
+      const scored: RoomMatch[] = (availableRooms as Record<string, unknown>[]).map(r => {
         const rt = r.room_type as Record<string, string> | null;
         const base = {
           room_id: r.room_id as string,
