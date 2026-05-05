@@ -17,10 +17,10 @@ export default function AdminComplaints() {
 
   async function loadData() {
     const [{ data: cData }, { data: sData }] = await Promise.all([
-      supabase.from("COMPLAINT")
-        .select("*, STUDENT_PROFILE(name, roll_no, hostel_code), COMPLAINT_CATEGORY(name), STAFF(name)")
+      supabase.from("complaint")
+        .select("*, student_profile(name, roll_no, hostel_code), complaint_category(name), staff(name)")
         .order("created_at", { ascending: false }),
-      supabase.from("STAFF").select("*").eq("availability", true).order("active_tickets"),
+      supabase.from("staff").select("*").eq("availability", true).order("active_tickets"),
     ]);
     setComplaints(cData || []);
     setStaff(sData || []);
@@ -32,7 +32,7 @@ export default function AdminComplaints() {
     if (status === "resolved") update.resolved_at = new Date().toISOString();
     if (status === "closed") update.closed_at = new Date().toISOString();
 
-    const { error } = await supabase.from("COMPLAINT").update(update).eq("ticket_id", ticketId);
+    const { error } = await supabase.from("complaint").update(update).eq("ticket_id", ticketId);
     if (error) {
       setToast({ type: "error", msg: error.message });
     } else {
@@ -43,7 +43,7 @@ export default function AdminComplaints() {
   }
 
   async function assignStaff(ticketId: string, staffId: string) {
-    const { error } = await supabase.from("COMPLAINT")
+    const { error } = await supabase.from("complaint")
       .update({ assigned_to: staffId, status: "assigned", updated_at: new Date().toISOString() })
       .eq("ticket_id", ticketId);
     if (error) setToast({ type: "error", msg: error.message });
@@ -89,14 +89,14 @@ export default function AdminComplaints() {
             ) : filtered.map((c) => (
               <tr key={String(c.ticket_id)}>
                 <td>
-                  <div style={{ fontWeight: 500 }}>{(c.STUDENT_PROFILE as unknown as Record<string, string>)?.name}</div>
-                  <div style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{(c.STUDENT_PROFILE as unknown as Record<string, string>)?.hostel_code}</div>
+                  <div style={{ fontWeight: 500 }}>{(c.student_profile as unknown as Record<string, string>)?.name}</div>
+                  <div style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>{(c.student_profile as unknown as Record<string, string>)?.hostel_code}</div>
                 </td>
-                <td>{(c.COMPLAINT_CATEGORY as unknown as Record<string, string>)?.name}</td>
+                <td>{(c.complaint_category as unknown as Record<string, string>)?.name}</td>
                 <td style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>{String(c.description)}</td>
                 <td><span className={`badge badge-${c.severity === "Critical" ? "expired" : c.severity === "High" ? "open" : "in-progress"}`}>{String(c.severity)}</span></td>
                 <td><span className={`badge badge-${String(c.status).replace("_", "-")}`}>{String(c.status).replace("_", " ")}</span></td>
-                <td>{(c.STAFF as unknown as Record<string, string>)?.name || "—"}</td>
+                <td>{(c.staff as unknown as Record<string, string>)?.name || "—"}</td>
                 <td>
                   <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
                     {c.status === "open" && (
