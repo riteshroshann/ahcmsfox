@@ -5,6 +5,17 @@ import { createClient } from "@/lib/supabase-browser";
 
 type StatusFilter = "all" | "open" | "assigned" | "in_progress" | "resolved" | "closed" | "escalated";
 
+const categoryToRole: Record<string, string[]> = {
+  "Plumbing": ["Plumber"],
+  "Electricity": ["Electrician"],
+  "WiFi": ["WiFi_Tech"],
+  "Carpentry": ["Carpenter"],
+  "Pest": ["Pest_Control"],
+  "Cleanliness": ["Supervisor", "Guard", "Warden"],
+  "Structural": ["Supervisor", "Warden"],
+  "Other": ["Warden", "Deputy_Warden", "Supervisor"],
+};
+
 export default function AdminComplaints() {
   const supabase = createClient();
   const [complaints, setComplaints] = useState<Record<string, unknown>[]>([]);
@@ -113,7 +124,11 @@ export default function AdminComplaints() {
                         onChange={(e) => { if (e.target.value) assignStaff(String(c.ticket_id), e.target.value); }}
                       >
                         <option value="" disabled>Assign…</option>
-                        {staff.map((s) => (
+                        {staff.filter(s => {
+                          const catName = (c.complaint_category as any)?.name;
+                          const allowedRoles = categoryToRole[catName] || ["Warden", "Supervisor"];
+                          return allowedRoles.includes(String(s.role));
+                        }).map((s) => (
                           <option key={String(s.staff_id)} value={String(s.staff_id)}>
                             {String(s.name)} ({String(s.active_tickets)})
                           </option>

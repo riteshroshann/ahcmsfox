@@ -66,7 +66,6 @@ export default function AdminRooms() {
                 <th>Floor</th>
                 <th>Occupancy</th>
                 <th>Status</th>
-                <th>Noise</th>
               </tr>
             </thead>
             <tbody>
@@ -87,7 +86,6 @@ export default function AdminRooms() {
                     </div>
                   </td>
                   <td><span className={`badge badge-${r.status === "available" ? "active" : r.status === "full" ? "expired" : "pending"}`}>{String(r.status)}</span></td>
-                  <td>{"●".repeat(Number(r.noise_level) || 3)}{"○".repeat(5 - (Number(r.noise_level) || 3))}</td>
                 </tr>
               ))}
             </tbody>
