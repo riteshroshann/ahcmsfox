@@ -179,98 +179,49 @@ export default function BookingPage() {
 
   if (loading) return <div className="loading-spinner" />;
 
-  // ── ALREADY ALLOCATED ──────────────────────────────────────────────────────
-  if (allocation) {
-    const room = allocation.room as Record<string, unknown>;
-    return (
-      <>
-        <div className="page-header">
-          <h2>My Room</h2>
-          <p>Your current room allocation.</p>
-        </div>
-        <div className="form-section" style={{ maxWidth: 520 }}>
+  // ── RENDER ───────────────────────────────────────────────────────────────
+  const compatColor = (compatibility?.score || 0) >= 70 ? "var(--color-success)" : (compatibility?.score || 0) >= 45 ? "var(--color-warning)" : "var(--color-danger)";
+
+  return (
+    <>
+      <div className="page-header">
+        <h2>Room Booking</h2>
+        <p>Manage your current allocation or request a new room match.</p>
+      </div>
+
+      {/* ACTIVE ALLOCATION CARD */}
+      {allocation && !directAssigned && (
+        <div className="form-section" style={{ maxWidth: 520, marginBottom: "var(--space-6)" }}>
           <div className="form-section-title">Active Allocation</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-5)", padding: "var(--space-4) 0" }}>
             <div>
               <div className="form-label">Room</div>
-              <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, fontFamily: "var(--font-mono)", marginTop: "var(--space-1)" }}>{String(room?.room_code)}</div>
+              <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, fontFamily: "var(--font-mono)", marginTop: "var(--space-1)" }}>{String((allocation.room as any)?.room_code)}</div>
             </div>
             <div>
               <div className="form-label">Floor</div>
-              <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, marginTop: "var(--space-1)" }}>{String(room?.floor)}</div>
+              <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, marginTop: "var(--space-1)" }}>{String((allocation.room as any)?.floor)}</div>
             </div>
             <div>
               <div className="form-label">Hostel</div>
-              <div style={{ marginTop: "var(--space-1)", fontSize: "var(--text-sm)" }}>{String(room?.hostel_code)}</div>
+              <div style={{ marginTop: "var(--space-1)", fontSize: "var(--text-sm)" }}>{String((allocation.room as any)?.hostel_code)}</div>
             </div>
             <div>
               <div className="form-label">Occupancy</div>
-              <div style={{ marginTop: "var(--space-1)", fontSize: "var(--text-sm)", fontFamily: "var(--font-mono)" }}>{String(room?.current_occupancy)}/{String(room?.capacity)}</div>
+              <div style={{ marginTop: "var(--space-1)", fontSize: "var(--text-sm)", fontFamily: "var(--font-mono)" }}>{String((allocation.room as any)?.current_occupancy)}/{String((allocation.room as any)?.capacity)}</div>
             </div>
           </div>
-          <div style={{ marginTop: "var(--space-2)", display: "flex", gap: "var(--space-2)" }}>
+          <div style={{ marginTop: "var(--space-2)", display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
             <span className="badge badge-active">Active</span>
-            <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)", display: "flex", alignItems: "center" }}>
-              Since {String(allocation.start_date)}
-            </span>
+            <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>Since {String(allocation.start_date)}</span>
+            <Link href="/dashboard/rooms" className="btn btn-secondary btn-sm" style={{ marginLeft: "auto" }}>View full details →</Link>
           </div>
         </div>
-        <div style={{ marginTop: "var(--space-4)", display: "flex", gap: "var(--space-3)" }}>
-          <Link href="/dashboard/rooms" className="btn btn-secondary btn-sm">View full room details →</Link>
-          <button className="btn btn-outline btn-sm" onClick={() => setAllocation(null)}>Request Room Change (Demo)</button>
-        </div>
-      </>
-    );
-  }
+      )}
 
-  // ── NO ALLOCATION, DIRECT ASSIGN DONE ────────────────────────────────────
-  if (directAssigned) return (
-    <>
-      <div className="page-header"><h2>Room Assigned!</h2></div>
-      <div className="form-section" style={{ maxWidth: 400 }}>
-        <p style={{ color: "var(--text-secondary)", fontSize: "var(--text-sm)" }}>
-          You've been assigned to <strong style={{ fontFamily: "var(--font-mono)" }}>{bestRoom?.room_code}</strong> (Floor {bestRoom?.floor}).
-          Head to the My Room tab for full details.
-        </p>
-      </div>
-      <div style={{ marginTop: "var(--space-4)" }}>
-        <Link href="/dashboard/rooms" className="btn btn-primary btn-sm">View My Room →</Link>
-      </div>
-    </>
-  );
-
-  // ── NO ALLOCATION, REQUEST SUBMITTED ─────────────────────────────────────
-  if (submitted) return (
-    <>
-      <div className="page-header"><h2>Request Submitted</h2></div>
-      <div className="form-section" style={{ maxWidth: 400 }}>
-        <p style={{ color: "var(--text-secondary)", fontSize: "var(--text-sm)" }}>
-          Your room request for <strong style={{ fontFamily: "var(--font-mono)" }}>{bestRoom?.room_code}</strong> has been sent to the Warden for approval.
-          You'll be notified once it's confirmed.
-        </p>
-      </div>
-    </>
-  );
-
-  // ── NO ALLOCATION FOUND ───────────────────────────────────────────────────
-  if (!bestRoom) return (
-    <>
-      <div className="page-header"><h2>Room Allocation</h2></div>
-      <div className="form-section" style={{ maxWidth: 400 }}>
-        <p style={{ color: "var(--text-secondary)", fontSize: "var(--text-sm)" }}>
-          No available rooms found in your hostel right now. Please contact the Warden.
-        </p>
-      </div>
-    </>
-  );
-
-  // ── SHOW SEARCH BOX & BEST MATCH ──────────────────────────────────────────
-  const compatColor = (compatibility?.score || 0) >= 70 ? "var(--color-success)" : (compatibility?.score || 0) >= 45 ? "var(--color-warning)" : "var(--color-danger)";
-  
-  return (
-    <>
-      <div className="page-header">
-        <h2>Find your room.</h2>
+      {/* SEARCH BOX FOR NEW ROOM */}
+      <div className="page-header" style={{ marginTop: allocation ? "var(--space-8)" : 0 }}>
+        <h2>{allocation ? "Request Room Change" : "Find your room"}</h2>
         <p>Tell us what matters to you, or let us match you based on your profile.</p>
       </div>
 
@@ -291,7 +242,34 @@ export default function BookingPage() {
 
       <hr style={{ border: "none", borderTop: "1px solid var(--border-subtle)", margin: "var(--space-6) 0" }} />
 
-      {!roommate ? (
+      {/* DIRECT ASSIGN SUCCESS */}
+      {directAssigned ? (
+        <div className="form-section" style={{ maxWidth: 400 }}>
+          <div className="form-section-title" style={{ color: "var(--color-success)" }}>Room Assigned!</div>
+          <p style={{ color: "var(--text-secondary)", fontSize: "var(--text-sm)", marginTop: "var(--space-3)" }}>
+            You've been successfully assigned to <strong style={{ fontFamily: "var(--font-mono)" }}>{bestRoom?.room_code}</strong>.
+          </p>
+          <div style={{ marginTop: "var(--space-4)" }}>
+            <Link href="/dashboard/rooms" className="btn btn-primary btn-sm">View My Room →</Link>
+          </div>
+        </div>
+      ) : submitted ? (
+        /* REQUEST SUBMITTED */
+        <div className="form-section" style={{ maxWidth: 400 }}>
+          <div className="form-section-title" style={{ color: "var(--color-success)" }}>Request Submitted</div>
+          <p style={{ color: "var(--text-secondary)", fontSize: "var(--text-sm)", marginTop: "var(--space-3)" }}>
+            Your request for <strong style={{ fontFamily: "var(--font-mono)" }}>{bestRoom?.room_code}</strong> has been sent to the Warden for approval.
+          </p>
+        </div>
+      ) : !bestRoom ? (
+        /* NO ROOMS */
+        <div className="form-section" style={{ maxWidth: 400 }}>
+          <p style={{ color: "var(--text-secondary)", fontSize: "var(--text-sm)" }}>
+            No available rooms found in your hostel right now. Please contact the Warden.
+          </p>
+        </div>
+      ) : !roommate ? (
+        /* BEST MATCH (VACANT) */
         <>
           <div className="form-section" style={{ maxWidth: 480 }}>
             <div className="form-section-title">Best Match (Vacant)</div>
