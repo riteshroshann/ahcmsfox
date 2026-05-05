@@ -215,8 +215,9 @@ export default function BookingPage() {
             </span>
           </div>
         </div>
-        <div style={{ marginTop: "var(--space-4)" }}>
+        <div style={{ marginTop: "var(--space-4)", display: "flex", gap: "var(--space-3)" }}>
           <Link href="/dashboard/rooms" className="btn btn-secondary btn-sm">View full room details →</Link>
+          <button className="btn btn-outline btn-sm" onClick={() => setAllocation(null)}>Request Room Change (Demo)</button>
         </div>
       </>
     );
@@ -263,113 +264,112 @@ export default function BookingPage() {
     </>
   );
 
-  // ── BEST ROOM FOUND, EMPTY (no roommate) → direct assign ─────────────────
-  if (!roommate) return (
-    <>
-      <div className="page-header">
-        <h2>Room Allocation</h2>
-        <p>We found the best available room based on your preferences.</p>
-      </div>
-      <div className="form-section" style={{ maxWidth: 480 }}>
-        <div className="form-section-title">Best Match</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-5)", padding: "var(--space-4) 0" }}>
-          <div>
-            <div className="form-label">Room</div>
-            <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, fontFamily: "var(--font-mono)", marginTop: "var(--space-1)" }}>{bestRoom.room_code}</div>
-          </div>
-          <div>
-            <div className="form-label">Floor</div>
-            <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, marginTop: "var(--space-1)" }}>{bestRoom.floor}</div>
-          </div>
-          <div>
-            <div className="form-label">Noise Level</div>
-            <div style={{ marginTop: "var(--space-1)", fontSize: "var(--text-sm)" }}>
-              {"●".repeat(bestRoom.noise_level || 3)}{"○".repeat(5 - (bestRoom.noise_level || 3))}
-            </div>
-          </div>
-          <div>
-            <div className="form-label">Occupancy</div>
-            <div style={{ marginTop: "var(--space-1)", fontSize: "var(--text-sm)" }}>Single room — you'll be alone</div>
-          </div>
-        </div>
-        <div style={{ marginTop: "var(--space-2)", padding: "var(--space-3)", background: "var(--surface-2)", borderRadius: "var(--radius-md)", fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}>
-          Matched based on your noise preference ({String(myProfile?.noise_pref)}/5) and sleep schedule ({String(myProfile?.sleep_pref)})
-        </div>
-      </div>
-      {error && <p style={{ color: "red", fontSize: "var(--text-sm)", marginTop: "var(--space-3)" }}>{error}</p>}
-      <div style={{ marginTop: "var(--space-5)" }}>
-        <button className="btn btn-primary" onClick={directAssign} disabled={submitting}>
-          {submitting ? "Assigning…" : "Confirm & Move In →"}
-        </button>
-      </div>
-    </>
-  );
-
-  // ── BEST ROOM HAS A ROOMMATE → show compatibility + request ──────────────
+  // ── SHOW SEARCH BOX & BEST MATCH ──────────────────────────────────────────
   const compatColor = (compatibility?.score || 0) >= 70 ? "var(--color-success)" : (compatibility?.score || 0) >= 45 ? "var(--color-warning)" : "var(--color-danger)";
+  
   return (
     <>
       <div className="page-header">
-        <h2>Room Allocation</h2>
-        <p>Best room found — it has an existing roommate. Review compatibility before confirming.</p>
+        <h2>Find your room.</h2>
+        <p>Tell us what matters to you, or let us match you based on your profile.</p>
       </div>
 
-      <div style={{ display: "grid", gap: "var(--space-5)", maxWidth: 540 }}>
-        <div className="form-section">
-          <div className="form-section-title">Assigned Room</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", padding: "var(--space-3) 0" }}>
-            <div>
-              <div className="form-label">Room</div>
-              <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, fontFamily: "var(--font-mono)", marginTop: "var(--space-1)" }}>{bestRoom.room_code}</div>
-            </div>
-            <div>
-              <div className="form-label">Floor</div>
-              <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, marginTop: "var(--space-1)" }}>{bestRoom.floor}</div>
-            </div>
-          </div>
+      <div style={{ maxWidth: 600, marginBottom: "var(--space-6)" }}>
+        <textarea
+          placeholder="e.g. quiet room on a high floor, near my friend Arjun"
+          style={{
+            width: "100%", height: "80px", border: "1px solid var(--border-subtle)",
+            borderRadius: "var(--radius-md)", padding: "var(--space-3)", fontSize: "var(--text-sm)",
+            fontFamily: "inherit", resize: "none", background: "var(--surface-1)",
+            color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
+          }}
+        />
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "var(--space-2)" }}>
+          <button className="btn btn-secondary btn-sm">Find via AI</button>
         </div>
+      </div>
 
-        <div className="form-section">
-          <div className="form-section-title">Roommate Compatibility</div>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", padding: "var(--space-4) 0" }}>
-            <div style={{
-              width: 64, height: 64, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "var(--text-lg)", fontWeight: 700, color: "#fff",
-              background: compatColor, flexShrink: 0,
-            }}>
-              {compatibility?.score}%
-            </div>
-            <div>
-              <div style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>{roommate.name}</div>
-              <div style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}>{roommate.roll_no}</div>
-              <div style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}>{roommate.program}</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
-            {compatibility?.reasons.map((r, i) => (
-              <div key={i} style={{
-                display: "flex", alignItems: "center", gap: "var(--space-2)",
-                fontSize: "var(--text-xs)", color: "var(--text-secondary)",
-                padding: "var(--space-2) var(--space-3)",
-                background: "var(--surface-2)", borderRadius: "var(--radius-sm)"
-              }}>
-                <span style={{ color: compatColor }}>●</span> {r}
+      <hr style={{ border: "none", borderTop: "1px solid var(--border-subtle)", margin: "var(--space-6) 0" }} />
+
+      {!roommate ? (
+        <>
+          <div className="form-section" style={{ maxWidth: 480 }}>
+            <div className="form-section-title">Best Match (Vacant)</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-5)", padding: "var(--space-4) 0" }}>
+              <div>
+                <div className="form-label">Room</div>
+                <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, fontFamily: "var(--font-mono)", marginTop: "var(--space-1)" }}>{bestRoom.room_code}</div>
               </div>
-            ))}
+              <div>
+                <div className="form-label">Floor</div>
+                <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, marginTop: "var(--space-1)" }}>{bestRoom.floor}</div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+          {error && <p style={{ color: "red", fontSize: "var(--text-sm)", marginTop: "var(--space-3)" }}>{error}</p>}
+          <div style={{ marginTop: "var(--space-5)" }}>
+            <button className="btn btn-primary" onClick={directAssign} disabled={submitting}>
+              {submitting ? "Assigning…" : "Confirm & Move In →"}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ display: "grid", gap: "var(--space-5)", maxWidth: 540 }}>
+            <div className="form-section">
+              <div className="form-section-title">Assigned Room</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", padding: "var(--space-3) 0" }}>
+                <div>
+                  <div className="form-label">Room</div>
+                  <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, fontFamily: "var(--font-mono)", marginTop: "var(--space-1)" }}>{bestRoom.room_code}</div>
+                </div>
+                <div>
+                  <div className="form-label">Floor</div>
+                  <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, marginTop: "var(--space-1)" }}>{bestRoom.floor}</div>
+                </div>
+              </div>
+            </div>
 
-      {error && <p style={{ color: "red", fontSize: "var(--text-sm)", marginTop: "var(--space-3)" }}>{error}</p>}
+            <div className="form-section">
+              <div className="form-section-title">Roommate Compatibility</div>
+              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-4)", padding: "var(--space-4) 0" }}>
+                <div style={{
+                  width: 64, height: 64, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "var(--text-lg)", fontWeight: 700, color: "#fff",
+                  background: compatColor, flexShrink: 0,
+                }}>
+                  {compatibility?.score}%
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: "var(--text-sm)" }}>{roommate.name}</div>
+                  <div style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)", fontFamily: "var(--font-mono)" }}>{roommate.roll_no}</div>
+                  <div style={{ fontSize: "var(--text-xs)", color: "var(--text-secondary)" }}>{roommate.program}</div>
+                </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                {compatibility?.reasons.map((r, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: "var(--space-2)",
+                    fontSize: "var(--text-xs)", color: "var(--text-secondary)",
+                    padding: "var(--space-2) var(--space-3)",
+                    background: "var(--surface-2)", borderRadius: "var(--radius-sm)"
+                  }}>
+                    <span style={{ color: compatColor }}>●</span> {r}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
 
-      <div style={{ marginTop: "var(--space-5)", display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
-        <button className="btn btn-primary" onClick={sendRequest} disabled={submitting}>
-          {submitting ? "Sending…" : "Send Request to Warden →"}
-        </button>
-        <span style={{ fontSize: "var(--text-xs)", color: "var(--text-tertiary)" }}>
-          Warden will review and confirm your placement
-        </span>
-      </div>
+          {error && <p style={{ color: "red", fontSize: "var(--text-sm)", marginTop: "var(--space-3)" }}>{error}</p>}
+
+          <div style={{ marginTop: "var(--space-5)", display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
+            <button className="btn btn-primary" onClick={sendRequest} disabled={submitting}>
+              {submitting ? "Sending…" : "Send Request to Warden →"}
+            </button>
+          </div>
+        </>
+      )}
     </>
   );
 }
