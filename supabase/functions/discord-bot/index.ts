@@ -105,13 +105,18 @@ serve(async (req) => {
 
       const severity = classifySeverity(description);
 
-      const { data: ticket, error } = await sb.from("complaint").insert({
+      const insertPayload: Record<string, unknown> = {
         student_id: student.student_id,
-        room_id: roomId,
-        category_id: catRow?.category_id || 8,
-        description,
-        severity,
-      }).select("ticket_id").single();
+        category_id: catRow?.category_id ?? 8,
+        description: String(description),
+        severity: String(severity),
+      };
+      if (roomId) insertPayload.room_id = roomId;
+
+      const { data: ticket, error } = await sb.from("complaint")
+        .insert(insertPayload)
+        .select("ticket_id")
+        .single();
 
       if (error) {
         return Response.json({
